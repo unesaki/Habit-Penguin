@@ -5,26 +5,46 @@
 // gestures. You can also use WidgetTester to find child widgets in the widget
 // tree, read text, and verify that the values of widget properties are correct.
 
-import 'package:flutter/material.dart';
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
+import 'package:hive/hive.dart';
 
 import 'package:habit_penguin/main.dart';
+import 'package:habit_penguin/models/habit_task.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  TestWidgetsFlutterBinding.ensureInitialized();
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+  late Directory tempDir;
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+  setUpAll(() async {
+    tempDir = await Directory.systemTemp.createTemp('habit_penguin_test');
+    Hive.init(tempDir.path);
+    if (!Hive.isAdapterRegistered(0)) {
+      Hive.registerAdapter(HabitTaskAdapter());
+    }
+    await Hive.openBox<HabitTask>('tasks');
+    await Hive.openBox('appState');
+  });
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+  tearDown(() async {
+    await Hive.box<HabitTask>('tasks').clear();
+    await Hive.box('appState').clear();
+  });
+
+  tearDownAll(() async {
+    await Hive.deleteFromDisk();
+    await tempDir.delete(recursive: true);
+  });
+
+  testWidgets('Home tab renders with today tasks heading', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(const HabitPenguinApp());
+    await tester.pumpAndSettle();
+
+    expect(find.text('今日のタスク'), findsOneWidget);
+    expect(find.text('Good job!'), findsOneWidget);
   });
 }
