@@ -1,122 +1,562 @@
 import 'package:flutter/material.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 
-void main() {
-  runApp(const MyApp());
+import 'models/habit_task.dart';
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Hive.initFlutter();
+  Hive.registerAdapter(HabitTaskAdapter());
+  await Hive.openBox<HabitTask>('tasks');
+  await Hive.openBox('appState');
+  runApp(const HabitPenguinApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class HabitPenguinApp extends StatelessWidget {
+  const HabitPenguinApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Habit Penguin',
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.lightBlueAccent),
+        useMaterial3: true,
+        snackBarTheme: const SnackBarThemeData(
+          behavior: SnackBarBehavior.floating,
+        ),
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: const HabitHomeShell(),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
+class HabitHomeShell extends StatefulWidget {
+  const HabitHomeShell({super.key});
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  State<HabitHomeShell> createState() => _HabitHomeShellState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+class _HabitHomeShellState extends State<HabitHomeShell> {
+  int _currentIndex = 0;
 
-  void _incrementCounter() {
+  void _onTabTapped(int index) {
     setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
+      _currentIndex = index;
     });
+  }
+
+  Future<void> _openTaskForm(
+    BuildContext context, {
+    HabitTask? initialTask,
+    int? taskIndex,
+  }) {
+    return Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) =>
+            TaskFormPage(initialTask: initialTask, taskIndex: taskIndex),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
+    final tabTitles = ['Home', 'Tasks'];
     return Scaffold(
       appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
+        title: Text('Habit Penguin - ${tabTitles[_currentIndex]}'),
       ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text('You have pushed the button this many times:'),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-          ],
-        ),
+      body: IndexedStack(
+        index: _currentIndex,
+        children: [
+          const HomeTab(),
+          TasksTab(
+            onEditTask: (index, task) {
+              _openTaskForm(context, initialTask: task, taskIndex: index);
+            },
+          ),
+        ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
+      floatingActionButton: _currentIndex == 1
+          ? FloatingActionButton(
+              onPressed: () => _openTaskForm(context),
+              tooltip: 'Add Task',
+              child: const Icon(Icons.add),
+            )
+          : null,
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentIndex,
+        onTap: _onTabTapped,
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+          BottomNavigationBarItem(icon: Icon(Icons.checklist), label: 'Tasks'),
+        ],
+      ),
     );
   }
 }
+
+class HomeTab extends StatefulWidget {
+  const HomeTab({super.key});
+
+  @override
+  State<HomeTab> createState() => _HomeTabState();
+}
+
+class _HomeTabState extends State<HomeTab> {
+  @override
+  Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: Transform.translate(
+            offset: Offset(0, -50), // 50px 上にずらす
+            child: Image.asset(
+              'assets/bg.png',
+              fit: BoxFit.cover,
+              alignment: Alignment.topCenter,
+            ),
+          ),
+        ),
+        // Ice image positioned below the penguin
+        Positioned(
+          bottom: 180,
+          left: 0,
+          right: 0,
+          child: Center(
+            child: Image.asset(
+              'assets/ice.png',
+              width: size.width * 0.6,
+              fit: BoxFit.contain,
+            ),
+          ),
+        ),
+        Positioned(
+          bottom: 230,
+          left: 0,
+          right: 0,
+          child: Center(
+            child: Image.asset(
+              'assets/penguin_normal.png',
+              width: size.width * 0.5,
+              fit: BoxFit.contain,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class TasksTab extends StatelessWidget {
+  const TasksTab({super.key, required this.onEditTask});
+
+  final void Function(int index, HabitTask task) onEditTask;
+
+  @override
+  Widget build(BuildContext context) {
+    final box = Hive.box<HabitTask>('tasks');
+    return ValueListenableBuilder<Box<HabitTask>>(
+      valueListenable: box.listenable(),
+      builder: (context, tasksBox, _) {
+        if (tasksBox.isEmpty) {
+          return Center(
+            child: Text(
+              'タスクがまだありません。右下の＋で追加しよう。',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+          );
+        }
+
+        return ListView.separated(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          itemCount: tasksBox.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 12),
+          itemBuilder: (context, index) {
+            final task = tasksBox.getAt(index);
+            if (task == null) {
+              return const SizedBox.shrink();
+            }
+            return Material(
+              elevation: 0,
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(16),
+              child: ListTile(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                leading: CircleAvatar(
+                  backgroundColor: Theme.of(
+                    context,
+                  ).colorScheme.primaryContainer,
+                  child: Icon(
+                    task.iconData,
+                    color: Theme.of(context).colorScheme.onPrimaryContainer,
+                  ),
+                ),
+                title: Text(task.name),
+                subtitle: Text(
+                  task.reminderEnabled ? 'Reminder: ON' : 'Reminder: OFF',
+                ),
+                onTap: () => onEditTask(index, task),
+                trailing: IconButton(
+                  icon: const Icon(Icons.delete_outline),
+                  onPressed: () => _confirmDelete(context, index),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _confirmDelete(BuildContext context, int index) async {
+    final shouldDelete =
+        await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('タスクを削除しますか？'),
+            content: const Text('この操作は取り消せません。'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('キャンセル'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text('削除'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+
+    if (!shouldDelete) {
+      return;
+    }
+
+    final box = Hive.box<HabitTask>('tasks');
+    await box.deleteAt(index);
+    if (!context.mounted) {
+      return;
+    }
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('タスクを削除しました。')));
+  }
+}
+
+class TaskFormPage extends StatefulWidget {
+  const TaskFormPage({super.key, this.initialTask, this.taskIndex});
+
+  final HabitTask? initialTask;
+  final int? taskIndex;
+
+  @override
+  State<TaskFormPage> createState() => _TaskFormPageState();
+}
+
+class _TaskFormPageState extends State<TaskFormPage> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _nameController;
+  late bool _reminderEnabled;
+  late int _selectedIconCodePoint;
+
+  @override
+  void initState() {
+    super.initState();
+    final initialTask = widget.initialTask;
+    _nameController = TextEditingController(text: initialTask?.name ?? '');
+    _reminderEnabled = initialTask?.reminderEnabled ?? false;
+    _selectedIconCodePoint =
+        initialTask?.iconCodePoint ?? _iconOptions.first.codePoint;
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isEditing = widget.taskIndex != null;
+    return Scaffold(
+      appBar: AppBar(title: Text(isEditing ? 'タスクを編集' : 'タスクを追加')),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              TextFormField(
+                controller: _nameController,
+                decoration: const InputDecoration(labelText: 'Habit名'),
+                textInputAction: TextInputAction.next,
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Habit名を入力してください';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 24),
+              Text('Icon', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: _iconOptions.map((icon) {
+                  final selected = _selectedIconCodePoint == icon.codePoint;
+                  return ChoiceChip(
+                    label: Icon(icon),
+                    selected: selected,
+                    selectedColor: Theme.of(
+                      context,
+                    ).colorScheme.primaryContainer,
+                    onSelected: (_) {
+                      setState(() {
+                        _selectedIconCodePoint = icon.codePoint;
+                      });
+                    },
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 24),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.calendar_month),
+                title: const Text('Frequency'),
+                subtitle: const Text('Daily'),
+              ),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Reminder'),
+                value: _reminderEnabled,
+                onChanged: (value) {
+                  setState(() {
+                    _reminderEnabled = value;
+                  });
+                },
+              ),
+              const SizedBox(height: 32),
+              FilledButton(onPressed: _saveTask, child: const Text('保存')),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _saveTask() async {
+    if (!(_formKey.currentState?.validate() ?? false)) {
+      return;
+    }
+
+    final box = Hive.box<HabitTask>('tasks');
+    final task = HabitTask(
+      name: _nameController.text.trim(),
+      iconCodePoint: _selectedIconCodePoint,
+      reminderEnabled: _reminderEnabled,
+    );
+
+    if (widget.taskIndex == null) {
+      await box.add(task);
+    } else {
+      await box.putAt(widget.taskIndex!, task);
+    }
+
+    if (!mounted) {
+      return;
+    }
+
+    Navigator.of(context).pop();
+  }
+}
+
+class _TaskCard extends StatelessWidget {
+  const _TaskCard({
+    required this.task,
+    required this.isChecked,
+    required this.onToggle,
+  });
+
+  final HabitTask task;
+  final bool isChecked;
+  final VoidCallback onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final borderColor = isChecked
+        ? theme.colorScheme.primary
+        : theme.colorScheme.outlineVariant;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onToggle,
+        borderRadius: BorderRadius.circular(24),
+        child: Ink(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x1A3A6073),
+                blurRadius: 18,
+                offset: Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              _TaskIconBadge(icon: task.iconData),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Text(
+                  task.name,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF294B72),
+                  ),
+                ),
+              ),
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: isChecked
+                      ? theme.colorScheme.primary.withValues(alpha: 0.18)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(width: 2, color: borderColor),
+                ),
+                alignment: Alignment.center,
+                child: isChecked
+                    ? Icon(
+                        Icons.check,
+                        size: 18,
+                        color: theme.colorScheme.primary,
+                      )
+                    : null,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TaskIconBadge extends StatelessWidget {
+  const _TaskIconBadge({required this.icon});
+
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      width: 48,
+      height: 48,
+      decoration: BoxDecoration(
+        color: theme.colorScheme.primary.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Icon(icon, color: theme.colorScheme.primary, size: 26),
+    );
+  }
+}
+
+class _SpeechBubble extends StatelessWidget {
+  const _SpeechBubble({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    final bubbleColor = Colors.white.withValues(alpha: 0.95);
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
+          decoration: BoxDecoration(
+            color: bubbleColor,
+            borderRadius: BorderRadius.circular(32),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x143A6073),
+                blurRadius: 16,
+                offset: Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Text(
+            message,
+            style:
+                Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF294B72),
+                ) ??
+                TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF294B72),
+                ),
+          ),
+        ),
+        Positioned(
+          bottom: -12,
+          left: 40,
+          child: CustomPaint(
+            size: const Size(28, 18),
+            painter: _BubbleTailPainter(color: bubbleColor),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _BubbleTailPainter extends CustomPainter {
+  _BubbleTailPainter({required this.color});
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+    final path = Path()
+      ..moveTo(0, 0)
+      ..lineTo(size.width, 0)
+      ..lineTo(size.width * 0.45, size.height)
+      ..close();
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _BubbleTailPainter oldDelegate) {
+    return oldDelegate.color != color;
+  }
+}
+
+const List<IconData> _iconOptions = [
+  Icons.check_circle,
+  Icons.self_improvement,
+  Icons.local_fire_department,
+  Icons.water_drop,
+  Icons.bookmark,
+  Icons.fitness_center,
+  Icons.brush,
+  Icons.nightlight_round,
+];
+
+const List<String> _cheerMessages = ['やったね！', 'えらい！', 'グッジョブ🐧'];
