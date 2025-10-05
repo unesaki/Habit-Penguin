@@ -105,272 +105,48 @@ class HomeTab extends StatefulWidget {
 }
 
 class _HomeTabState extends State<HomeTab> {
-  late final Box<HabitTask> _tasksBox;
-  late final Box _appStateBox;
-  final Map<int, bool> _completedToday = <int, bool>{};
-  String _todayKey = '';
-  int _streak = 0;
-  bool _isCheering = false;
-  int _cheerMessageIndex = 0;
-  String _currentBubbleMessage = 'Good job!';
-
-  @override
-  void initState() {
-    super.initState();
-    _tasksBox = Hive.box<HabitTask>('tasks');
-    _appStateBox = Hive.box('appState');
-    _todayKey = _formatDate(DateTime.now());
-    _streak = (_appStateBox.get('streak') as int?) ?? 0;
-  }
-
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final size = MediaQuery.of(context).size;
     return Stack(
       children: [
         Positioned.fill(
-          child: Image.asset(
-            'assets/ice_bg.png',
-            fit: BoxFit.cover,
+          child: Transform.translate(
+            offset: Offset(0, -50), // 50px 上にずらす
+            child: Image.asset(
+              'assets/bg.png',
+              fit: BoxFit.cover,
+              alignment: Alignment.topCenter,
+            ),
           ),
         ),
-        SafeArea(
-          child: ValueListenableBuilder<Box<HabitTask>>(
-            valueListenable: _tasksBox.listenable(),
-            builder: (context, box, _) {
-              final todaysTasks = <MapEntry<int, HabitTask>>[];
-              for (var i = 0; i < box.length && todaysTasks.length < 3; i++) {
-                final task = box.getAt(i);
-                if (task != null) {
-                  todaysTasks.add(MapEntry(i, task));
-                }
-              }
-
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(
-                      'Habit Penguin',
-                      textAlign: TextAlign.center,
-                      style: theme.textTheme.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: const Color(0xFF294B72),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    Align(
-                      alignment: Alignment.center,
-                      child: _SpeechBubble(message: _currentBubbleMessage),
-                    ),
-                    const SizedBox(height: 28),
-                    // Penguin scene should expand to fill available vertical space
-                    Expanded(
-                      flex: 4,
-                      child: _buildPenguinScene(context),
-                    ),
-                    const SizedBox(height: 28),
-                    _buildStreakCard(context),
-                    const SizedBox(height: 24),
-                    Text(
-                      '今日のタスク',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: const Color(0xFF294B72),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    // Tasks area: expand to fill remaining space if possible
-                    Expanded(
-                      flex: 3,
-                      child: Builder(
-                        builder: (context) {
-                          if (todaysTasks.isEmpty) {
-                            return Align(
-                              alignment: Alignment.topLeft,
-                              child: Text(
-                                'タスクがありません。Tasksタブで追加してね。',
-                                style: theme.textTheme.bodyMedium,
-                              ),
-                            );
-                          } else {
-                            return Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                ...todaysTasks.map((entry) {
-                                  final isChecked = _completedToday[entry.key] ?? false;
-                                  return Padding(
-                                    padding: const EdgeInsets.only(bottom: 14),
-                                    child: _TaskCard(
-                                      task: entry.value,
-                                      isChecked: isChecked,
-                                      onToggle: () =>
-                                          _handleTaskToggle(context, entry.key, !isChecked),
-                                    ),
-                                  );
-                                }),
-                                if (box.length > todaysTasks.length)
-                                  Padding(
-                                    padding: const EdgeInsets.only(top: 4),
-                                    child: Text(
-                                      '他のタスクはTasksタブで確認できます。',
-                                      style: theme.textTheme.bodySmall,
-                                    ),
-                                  ),
-                              ],
-                            );
-                          }
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
+        // Ice image positioned below the penguin
+        Positioned(
+          bottom: 180,
+          left: 0,
+          right: 0,
+          child: Center(
+            child: Image.asset(
+              'assets/ice.png',
+              width: size.width * 0.6,
+              fit: BoxFit.contain,
+            ),
+          ),
+        ),
+        Positioned(
+          bottom: 230,
+          left: 0,
+          right: 0,
+          child: Center(
+            child: Image.asset(
+              'assets/penguin_normal.png',
+              width: size.width * 0.5,
+              fit: BoxFit.contain,
+            ),
           ),
         ),
       ],
     );
-  }
-
-  Widget _buildPenguinScene(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    return Center(
-      child: AnimatedScale(
-        scale: _isCheering ? 1.12 : 1.0,
-        duration: const Duration(milliseconds: 280),
-        curve: Curves.easeOutBack,
-        child: Padding(
-          padding: const EdgeInsets.only(top: 40),
-          child: Image.asset(
-            'assets/penguin_normal.png',
-            height: screenWidth * 0.65,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStreakCard(BuildContext context) {
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primaryContainer,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.local_fire_department,
-                color: Theme.of(context).colorScheme.onPrimaryContainer,
-                size: 28,
-              ),
-            ),
-            const SizedBox(width: 16),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Streak', style: Theme.of(context).textTheme.titleMedium),
-                Text(
-                  '$_streak日連続',
-                  style: Theme.of(context).textTheme.headlineSmall,
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _handleTaskToggle(BuildContext context, int taskIndex, bool isChecked) {
-    final currentKey = _formatDate(DateTime.now());
-    setState(() {
-      if (currentKey != _todayKey) {
-        _todayKey = currentKey;
-        _completedToday.clear();
-      }
-      if (isChecked) {
-        _completedToday[taskIndex] = true;
-      } else {
-        _completedToday.remove(taskIndex);
-      }
-    });
-
-    if (isChecked) {
-      _triggerCheer(context);
-      _updateStreakOnCompletion();
-    }
-  }
-
-  void _triggerCheer(BuildContext context) {
-    final message = _cheerMessages[_cheerMessageIndex % _cheerMessages.length];
-    _cheerMessageIndex++;
-    setState(() {
-      _isCheering = true;
-      _currentBubbleMessage = message;
-    });
-    Future<void>.delayed(const Duration(milliseconds: 480), () {
-      if (!mounted) return;
-      setState(() {
-        _isCheering = false;
-      });
-    });
-
-    final messenger = ScaffoldMessenger.of(context);
-    messenger.hideCurrentSnackBar();
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(message),
-        duration: const Duration(milliseconds: 900),
-      ),
-    );
-  }
-
-  void _updateStreakOnCompletion() {
-    final todayKey = _formatDate(DateTime.now());
-    final lastCompletionKey = _appStateBox.get('lastCompletionDate') as String?;
-    final storedStreak = (_appStateBox.get('streak') as int?) ?? 0;
-
-    if (lastCompletionKey == todayKey) {
-      setState(() {
-        _streak = storedStreak;
-      });
-      return;
-    }
-
-    final nextStreak = () {
-      if (lastCompletionKey == null) {
-        return 1;
-      }
-      final lastDate = DateTime.parse(lastCompletionKey);
-      final today = DateTime.parse(todayKey);
-      final diff = today.difference(lastDate).inDays;
-      if (diff == 1) {
-        return storedStreak + 1;
-      }
-      return 1;
-    }();
-
-    _appStateBox
-      ..put('streak', nextStreak)
-      ..put('lastCompletionDate', todayKey);
-
-    setState(() {
-      _streak = nextStreak;
-      _todayKey = todayKey;
-    });
-  }
-
-  String _formatDate(DateTime date) {
-    final month = date.month.toString().padLeft(2, '0');
-    final day = date.day.toString().padLeft(2, '0');
-    return '${date.year}-$month-$day';
   }
 }
 
