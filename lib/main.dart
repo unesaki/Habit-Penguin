@@ -343,6 +343,39 @@ class _HomeStatsRow extends StatelessWidget {
             label: 'リマインダーON',
             valueText: '$reminderOnCount 件',
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HomeStatsRow extends StatelessWidget {
+  const _HomeStatsRow({
+    required this.totalTasks,
+    required this.reminderOnCount,
+  });
+
+  final int totalTasks;
+  final int reminderOnCount;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: _HomeStatCard(
+            icon: Icons.check_circle_outline,
+            label: '登録タスク',
+            valueText: '$totalTasks 件',
+          ),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: _HomeStatCard(
+            icon: Icons.alarm_on,
+            label: 'リマインダーON',
+            valueText: '$reminderOnCount 件',
+          ),
         ),
       ],
     );
