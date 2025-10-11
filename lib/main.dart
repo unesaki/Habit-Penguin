@@ -837,7 +837,7 @@ class _TaskCard extends StatelessWidget {
                 height: 32,
                 decoration: BoxDecoration(
                   color: isChecked
-                      ? theme.colorScheme.primary.withValues(alpha: 0.18)
+                      ? theme.colorScheme.primary.withOpacity(0.18)
                       : Colors.transparent,
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(width: 2, color: borderColor),
@@ -871,7 +871,7 @@ class _TaskIconBadge extends StatelessWidget {
       width: 48,
       height: 48,
       decoration: BoxDecoration(
-        color: theme.colorScheme.primary.withValues(alpha: 0.12),
+        color: theme.colorScheme.primary.withOpacity(0.12),
         borderRadius: BorderRadius.circular(18),
       ),
       child: Icon(icon, color: theme.colorScheme.primary, size: 26),
