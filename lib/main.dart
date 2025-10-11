@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
@@ -105,47 +107,451 @@ class HomeTab extends StatefulWidget {
 }
 
 class _HomeTabState extends State<HomeTab> {
+  late final Box<HabitTask> _tasksBox;
+
+  @override
+  void initState() {
+    super.initState();
+    _tasksBox = Hive.box<HabitTask>('tasks');
+  }
+
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
-    return Stack(
+    return ValueListenableBuilder<Box<HabitTask>>(
+      valueListenable: _tasksBox.listenable(),
+      builder: (context, tasksBox, _) {
+        final tasks = tasksBox.values.toList(growable: false);
+        final reminderOnCount =
+            tasks.where((task) => task.reminderEnabled).length;
+        return DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Theme.of(context)
+                    .colorScheme
+                    .primaryContainer
+                    .withOpacity(0.35),
+                Theme.of(context).colorScheme.surface,
+              ],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
+          ),
+          child: SafeArea(
+            bottom: false,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.only(bottom: 48),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _PenguinHeroSection(totalTasks: tasks.length),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 24),
+                        _HomeStatsRow(
+                          totalTasks: tasks.length,
+                          reminderOnCount: reminderOnCount,
+                        ),
+                        const SizedBox(height: 32),
+                        Text(
+                          '今日のクエスト',
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleLarge
+                              ?.copyWith(fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 16),
+                        if (tasks.isEmpty)
+                          const _EmptyTaskCard()
+                        else
+                          _TaskPreviewList(tasks: tasks),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _PenguinHeroSection extends StatelessWidget {
+  const _PenguinHeroSection({required this.totalTasks});
+
+  final int totalTasks;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final surfaceOverlay = Color.lerp(
+          theme.colorScheme.surface,
+          Colors.white,
+          0.75,
+        ) ??
+        theme.colorScheme.surface;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final heroHeight = math.max(screenHeight * 0.6, 420.0);
+    return SizedBox(
+      height: heroHeight,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final width = constraints.maxWidth;
+          final penguinWidth = math.min(width * 0.55, 260.0);
+          final iceWidth = math.min(width * 0.85, 360.0);
+          final penguinBottom = heroHeight * 0.22;
+          final iceBottom = heroHeight * 0.1;
+          return Stack(
+            fit: StackFit.expand,
+            children: [
+              Positioned.fill(
+                child: Image.asset(
+                  'assets/bg.png',
+                  fit: BoxFit.cover,
+                  alignment: Alignment.topCenter,
+                ),
+              ),
+              Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.black.withOpacity(0.15),
+                        Colors.transparent,
+                        theme.colorScheme.surface.withOpacity(0.85),
+                      ],
+                      stops: const [0.0, 0.55, 1.0],
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                top: 32,
+                left: 24,
+                right: 24,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'おかえり！',
+                      style: theme.textTheme.headlineSmall?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'ペンギンと一緒に今日のクエストをこなそう',
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        color: Colors.white.withOpacity(0.9),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Positioned(
+                bottom: penguinBottom,
+                left: (width - penguinWidth) / 2,
+                child: SizedBox(
+                  width: penguinWidth,
+                  child: Image.asset(
+                    'assets/penguin_normal.png',
+                    fit: BoxFit.contain,
+                  ),
+                ),
+              ),
+              Positioned(
+                bottom: iceBottom,
+                left: (width - iceWidth) / 2,
+                child: SizedBox(
+                  width: iceWidth,
+                  child: Image.asset(
+                    'assets/ice.png',
+                    fit: BoxFit.contain,
+                  ),
+                ),
+              ),
+              Positioned(
+                left: 24,
+                right: 24,
+                bottom: 24,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                  decoration: BoxDecoration(
+                    color: surfaceOverlay.withOpacity(0.9),
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.emoji_events, size: 22),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          totalTasks > 0
+                              ? 'クエストは${totalTasks}件！達成でペンギンにごほうびをあげよう。'
+                              : 'タスクタブで「＋」を押して最初のクエストを追加しよう。',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color:
+                                theme.colorScheme.onSurface.withOpacity(0.95),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _HomeStatsRow extends StatelessWidget {
+  const _HomeStatsRow({
+    required this.totalTasks,
+    required this.reminderOnCount,
+  });
+
+  final int totalTasks;
+  final int reminderOnCount;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
       children: [
-        Positioned.fill(
-          child: Transform.translate(
-            offset: Offset(0, -50), // 50px 上にずらす
-            child: Image.asset(
-              'assets/bg.png',
-              fit: BoxFit.cover,
-              alignment: Alignment.topCenter,
-            ),
+        Expanded(
+          child: _HomeStatCard(
+            icon: Icons.check_circle_outline,
+            label: '登録タスク',
+            valueText: '$totalTasks 件',
           ),
         ),
-        // Ice image positioned below the penguin
-        Positioned(
-          bottom: 180,
-          left: 0,
-          right: 0,
-          child: Center(
-            child: Image.asset(
-              'assets/ice.png',
-              width: size.width * 0.6,
-              fit: BoxFit.contain,
-            ),
-          ),
-        ),
-        Positioned(
-          bottom: 230,
-          left: 0,
-          right: 0,
-          child: Center(
-            child: Image.asset(
-              'assets/penguin_normal.png',
-              width: size.width * 0.5,
-              fit: BoxFit.contain,
-            ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: _HomeStatCard(
+            icon: Icons.alarm_on,
+            label: 'リマインダーON',
+            valueText: '$reminderOnCount 件',
           ),
         ),
       ],
+    );
+  }
+}
+
+class _HomeStatCard extends StatelessWidget {
+  const _HomeStatCard({
+    required this.icon,
+    required this.label,
+    required this.valueText,
+  });
+
+  final IconData icon;
+  final String label;
+  final String valueText;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: theme.colorScheme.shadow.withOpacity(0.06),
+            blurRadius: 18,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            backgroundColor: theme.colorScheme.primaryContainer,
+            foregroundColor: theme.colorScheme.onPrimaryContainer,
+            child: Icon(icon),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: theme.colorScheme.secondary,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  valueText,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TaskPreviewList extends StatelessWidget {
+  const _TaskPreviewList({required this.tasks});
+
+  final List<HabitTask> tasks;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final previewCount = math.min(3, tasks.length);
+    return Column(
+      children: [
+        for (var i = 0; i < previewCount; i++) ...[
+          _TaskPreviewCard(task: tasks[i]),
+          if (i != previewCount - 1) const SizedBox(height: 12),
+        ],
+        if (tasks.length > previewCount) ...[
+          const SizedBox(height: 16),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              '全てのクエストはタスクタブで確認できます。',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.secondary,
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _TaskPreviewCard extends StatelessWidget {
+  const _TaskPreviewCard({required this.task});
+
+  final HabitTask task;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: theme.colorScheme.shadow.withOpacity(0.05),
+            blurRadius: 16,
+            offset: const Offset(0, 12),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 28,
+            backgroundColor: theme.colorScheme.primaryContainer,
+            foregroundColor: theme.colorScheme.onPrimaryContainer,
+            child: Icon(task.iconData, size: 26),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  task.name,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  task.reminderEnabled
+                      ? 'リマインダー：ON'
+                      : 'リマインダー：OFF',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.secondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Icon(
+            Icons.chevron_right,
+            color: theme.colorScheme.outline,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EmptyTaskCard extends StatelessWidget {
+  const _EmptyTaskCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: theme.colorScheme.shadow.withOpacity(0.05),
+            blurRadius: 16,
+            offset: const Offset(0, 12),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                backgroundColor: theme.colorScheme.primaryContainer,
+                foregroundColor: theme.colorScheme.onPrimaryContainer,
+                child: const Icon(Icons.lightbulb_outline),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Text(
+                  'クエストを作成してペンギンに日課を教えよう！',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'タスクタブの右下にある「＋」ボタンから新しいクエストを追加できます。',
+            style: theme.textTheme.bodyMedium,
+          ),
+        ],
+      ),
     );
   }
 }
