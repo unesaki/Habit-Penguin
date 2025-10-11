@@ -886,7 +886,7 @@ class _SpeechBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bubbleColor = Colors.white.withValues(alpha: 0.95);
+    final bubbleColor = Colors.white.withOpacity(0.95);
     return Stack(
       clipBehavior: Clip.none,
       children: [
