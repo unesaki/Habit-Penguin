@@ -126,18 +126,16 @@ class _HomeTabState extends State<HomeTab> {
       valueListenable: _tasksBox.listenable(),
       builder: (context, tasksBox, _) {
         final today = DateTime.now();
-        final todaysEntries = <MapEntry<int, HabitTask>>[];
-        var openTaskCount = 0;
+        final openEntries = <MapEntry<int, HabitTask>>[];
         for (var i = 0; i < tasksBox.length; i++) {
           final task = tasksBox.getAt(i);
-          if (task == null || task.isCompleted) {
-            continue;
-          }
-          openTaskCount++;
-          if (todaysEntries.length < 3 && task.isActiveOn(today)) {
-            todaysEntries.add(MapEntry(i, task));
-          }
+          if (task == null || task.isCompleted) continue;
+          openEntries.add(MapEntry(i, task));
         }
+        final todaysEntries = openEntries
+            .where((entry) => entry.value.isActiveOn(today))
+            .take(3)
+            .toList(growable: false);
         return DecoratedBox(
           decoration: BoxDecoration(
             gradient: LinearGradient(
@@ -154,18 +152,18 @@ class _HomeTabState extends State<HomeTab> {
           child: SafeArea(
             bottom: false,
             child: SingleChildScrollView(
+              physics: const NeverScrollableScrollPhysics(),
               padding: const EdgeInsets.only(bottom: 48),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _PenguinHeroSection(totalTasks: openTaskCount),
-                  const SizedBox(height: 32),
+                  _PenguinHeroSection(totalTasks: openEntries.length),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 20),
                         Text(
                           '今日のタスク',
                           style: Theme.of(context).textTheme.titleLarge
@@ -178,14 +176,18 @@ class _HomeTabState extends State<HomeTab> {
                           for (var i = 0; i < todaysEntries.length; i++)
                             Padding(
                               padding: EdgeInsets.only(
-                                bottom: i == todaysEntries.length - 1 ? 0 : 12,
+                                bottom: i == todaysEntries.length - 1 ? 0 : 8,
                               ),
                               child: _TodayTaskCard(
                                 task: todaysEntries[i].value,
                                 index: todaysEntries[i].key,
+                                onComplete: () => _completeTaskWithXp(
+                                  context,
+                                  todaysEntries[i].key,
+                                ),
                               ),
                             ),
-                          if (openTaskCount > todaysEntries.length)
+                          if (openEntries.length > todaysEntries.length)
                             Padding(
                               padding: const EdgeInsets.only(top: 16),
                               child: Text(
@@ -300,37 +302,6 @@ class _PenguinHeroSection extends StatelessWidget {
                   ),
                 ),
               ),
-              // Positioned(
-              //   left: 24,
-              //   right: 24,
-              //   bottom: 24,
-              //   child: Container(
-              //     padding: const EdgeInsets.symmetric(
-              //       horizontal: 20,
-              //       vertical: 18,
-              //     ),
-              //     decoration: BoxDecoration(
-              //       color: surfaceOverlay.withValues(alpha: 0.9),
-              //       borderRadius: BorderRadius.circular(24),
-              //     ),
-              //     // child: Row(
-              //     //   children: [
-              //     //     const Icon(Icons.emoji_events, size: 22),
-              //     //     const SizedBox(width: 12),
-              //     //     Expanded(
-              //     //       child: Text(
-              //     //         'クエストは$totalTasks件！達成でペンギンにごほうびをあげよう。',
-              //     //         style: theme.textTheme.bodyMedium?.copyWith(
-              //     //           color: theme.colorScheme.onSurface.withValues(
-              //     //             alpha: 0.95,
-              //     //           ),
-              //     //         ),
-              //     //       ),
-              //     //     ),
-              //     //   ],
-              //     // ),
-              //   ),
-              // ),
             ],
           );
         },
@@ -340,10 +311,15 @@ class _PenguinHeroSection extends StatelessWidget {
 }
 
 class _TodayTaskCard extends StatelessWidget {
-  const _TodayTaskCard({required this.task, required this.index});
+  const _TodayTaskCard({
+    required this.task,
+    required this.index,
+    this.onComplete,
+  });
 
   final HabitTask task;
   final int index;
+  final VoidCallback? onComplete;
 
   @override
   Widget build(BuildContext context) {
@@ -360,10 +336,10 @@ class _TodayTaskCard extends StatelessWidget {
           );
         },
         child: Ink(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
             color: theme.colorScheme.surface,
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(18),
             boxShadow: [
               BoxShadow(
                 color: theme.colorScheme.shadow.withValues(alpha: 0.05),
@@ -375,33 +351,39 @@ class _TodayTaskCard extends StatelessWidget {
           child: Row(
             children: [
               CircleAvatar(
-                radius: 24,
+                radius: 18,
                 backgroundColor: theme.colorScheme.primaryContainer,
                 foregroundColor: theme.colorScheme.onPrimaryContainer,
-                child: Icon(task.iconData, size: 24),
+                child: Icon(task.iconData, size: 18),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       task.name,
-                      style: theme.textTheme.titleMedium?.copyWith(
+                      style: theme.textTheme.bodyMedium?.copyWith(
                         fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${_difficultyLabel(task.difficulty)} • ${_scheduleLabel(task)}',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.outline,
+                        fontSize: 15,
                       ),
                     ),
                   ],
                 ),
               ),
-              Icon(Icons.chevron_right, color: theme.colorScheme.outline),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (onComplete != null)
+                    IconButton(
+                      icon: const Icon(Icons.check_circle_outline),
+                      color: theme.colorScheme.primary,
+                      tooltip: '完了にする',
+                      onPressed: onComplete,
+                    ),
+                  const Icon(Icons.chevron_right),
+                ],
+              ),
             ],
           ),
         ),
@@ -443,7 +425,7 @@ class _CreateTaskCallout extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '今日のクエストを作成しよう',
+                  '今日のタスクを作成しよう',
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w600,
                   ),
@@ -536,7 +518,8 @@ class TasksTab extends StatelessWidget {
                         task: entry.value,
                         onTap: () => onEditTask(entry.key, entry.value),
                         onDelete: () => _confirmDelete(context, entry.key),
-                        onComplete: () => _completeTask(context, entry.key),
+                        onComplete: () =>
+                            _completeTaskWithXp(context, entry.key),
                         isActive: true,
                       ),
                     ),
@@ -557,7 +540,8 @@ class TasksTab extends StatelessWidget {
                         task: entry.value,
                         onTap: () => onEditTask(entry.key, entry.value),
                         onDelete: () => _confirmDelete(context, entry.key),
-                        onComplete: () => _completeTask(context, entry.key),
+                        onComplete: () =>
+                            _completeTaskWithXp(context, entry.key),
                         isActive: entry.value.isActiveOn(today),
                       ),
                     ),
@@ -605,32 +589,6 @@ class TasksTab extends StatelessWidget {
     ).showSnackBar(const SnackBar(content: Text('タスクを削除しました。')));
   }
 
-  Future<void> _completeTask(BuildContext context, int index) async {
-    final tasksBox = Hive.box<HabitTask>('tasks');
-    final task = tasksBox.getAt(index);
-    if (task == null || task.isCompleted) {
-      return;
-    }
-
-    final gainedXp = _xpForDifficulty(task.difficulty);
-
-    task
-      ..isCompleted = true
-      ..completedAt = DateTime.now()
-      ..completionXp = gainedXp;
-    await task.save();
-
-    final appStateBox = Hive.box('appState');
-    final currentXp = (appStateBox.get('xp') as int?) ?? 0;
-    await appStateBox.put('xp', currentXp + gainedXp);
-
-    if (context.mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('$gainedXp XP獲得！')));
-    }
-  }
-
   void _openCompletedTasks(BuildContext context) {
     Navigator.of(
       context,
@@ -646,6 +604,44 @@ class TaskFormPage extends StatefulWidget {
 
   @override
   State<TaskFormPage> createState() => _TaskFormPageState();
+}
+
+Future<void> _completeTaskWithXp(BuildContext context, int index) async {
+  final tasksBox = Hive.box<HabitTask>('tasks');
+  final task = tasksBox.getAt(index);
+  if (task == null || task.isCompleted) {
+    return;
+  }
+
+  final gainedXp = _xpForDifficulty(task.difficulty);
+
+  task
+    ..isCompleted = true
+    ..completedAt = DateTime.now()
+    ..completionXp = gainedXp;
+  await task.save();
+
+  final appStateBox = Hive.box('appState');
+  final currentXp = (appStateBox.get('xp') as int?) ?? 0;
+  await appStateBox.put('xp', currentXp + gainedXp);
+
+  if (!context.mounted) {
+    return;
+  }
+
+  await showDialog<void>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: const Text('クエスト達成！'),
+      content: Text('$gainedXp XPを獲得しました！'),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(dialogContext).pop(),
+          child: const Text('OK'),
+        ),
+      ],
+    ),
+  );
 }
 
 class _TaskFormPageState extends State<TaskFormPage> {
@@ -688,134 +684,212 @@ class _TaskFormPageState extends State<TaskFormPage> {
   @override
   Widget build(BuildContext context) {
     final isEditing = widget.taskIndex != null;
+    final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(title: Text(isEditing ? 'タスクを編集' : 'タスクを追加')),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+      body: SafeArea(
         child: Form(
           key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              TextFormField(
-                controller: _nameController,
-                decoration: const InputDecoration(labelText: 'Habit名'),
-                textInputAction: TextInputAction.next,
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Habit名を入力してください';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 24),
-              Text('Icon', style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: _iconOptions.map((icon) {
-                  final selected = _selectedIconCodePoint == icon.codePoint;
-                  return ChoiceChip(
-                    label: Icon(icon),
-                    selected: selected,
-                    selectedColor: Theme.of(
-                      context,
-                    ).colorScheme.primaryContainer,
-                    onSelected: (_) {
-                      setState(() {
-                        _selectedIconCodePoint = icon.codePoint;
-                      });
-                    },
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 24),
-              Text('難易度', style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 12),
-              SegmentedButton<TaskDifficulty>(
-                segments: const [
-                  ButtonSegment(
-                    value: TaskDifficulty.easy,
-                    label: Text('Easy'),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _FormSection(
+                  title: '基本情報',
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      TextFormField(
+                        controller: _nameController,
+                        decoration: const InputDecoration(
+                          labelText: 'Habit名',
+                          hintText: '例: 朝のストレッチ',
+                        ),
+                        textInputAction: TextInputAction.next,
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Habit名を入力してください';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 20),
+                      Text('アイコン', style: theme.textTheme.titleMedium),
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 12,
+                        runSpacing: 12,
+                        children: _iconOptions.map((icon) {
+                          final selected =
+                              _selectedIconCodePoint == icon.codePoint;
+                          return GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _selectedIconCodePoint = icon.codePoint;
+                              });
+                            },
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              width: 60,
+                              height: 60,
+                              decoration: BoxDecoration(
+                                color: selected
+                                    ? theme.colorScheme.primaryContainer
+                                    : theme.colorScheme.surfaceContainerHighest,
+                                borderRadius: BorderRadius.circular(18),
+                                border: selected
+                                    ? Border.all(
+                                        color: theme.colorScheme.primary,
+                                        width: 2,
+                                      )
+                                    : null,
+                              ),
+                              child: Icon(
+                                icon,
+                                color: selected
+                                    ? theme.colorScheme.primary
+                                    : theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: 20),
+                      Center(
+                        child: SegmentedButton<TaskDifficulty>(
+                          style: ButtonStyle(
+                            visualDensity: VisualDensity.compact,
+                            padding: WidgetStateProperty.all(
+                              const EdgeInsets.symmetric(horizontal: 12),
+                            ),
+                          ),
+                          segments: const [
+                            ButtonSegment(
+                              value: TaskDifficulty.easy,
+                              label: Text('Easy'),
+                            ),
+                            ButtonSegment(
+                              value: TaskDifficulty.normal,
+                              label: Text('Normal'),
+                            ),
+                            ButtonSegment(
+                              value: TaskDifficulty.hard,
+                              label: Text('Hard'),
+                            ),
+                          ],
+                          selected: {_selectedDifficulty},
+                          onSelectionChanged: (selection) {
+                            setState(() {
+                              _selectedDifficulty = selection.first;
+                            });
+                          },
+                        ),
+                      ),
+                    ],
                   ),
-                  ButtonSegment(
-                    value: TaskDifficulty.normal,
-                    label: Text('Normal'),
-                  ),
-                  ButtonSegment(
-                    value: TaskDifficulty.hard,
-                    label: Text('Hard'),
-                  ),
-                ],
-                selected: {_selectedDifficulty},
-                onSelectionChanged: (selection) {
-                  setState(() {
-                    _selectedDifficulty = selection.first;
-                  });
-                },
-              ),
-              const SizedBox(height: 24),
-              Text('日付', style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 12),
-              if (!_isRepeating)
-                _DateFieldTile(
-                  label: '日付',
-                  value: _scheduledDate != null
-                      ? _formatDateLabel(_scheduledDate!)
-                      : '未選択',
-                  onTap: _pickScheduledDate,
-                ),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('繰り返しタスク'),
-                subtitle: const Text('開始と終了期間を設定できます'),
-                value: _isRepeating,
-                onChanged: (value) {
-                  setState(() {
-                    _isRepeating = value;
-                    if (value) {
-                      _repeatStart ??= _scheduledDate ?? DateTime.now();
-                      _repeatEnd ??= _repeatStart;
-                      _scheduledDate = null;
-                    } else {
-                      _scheduledDate = _repeatStart ?? DateTime.now();
-                      _repeatStart = null;
-                      _repeatEnd = null;
-                    }
-                  });
-                },
-              ),
-              if (_isRepeating) ...[
-                _DateFieldTile(
-                  label: '開始日',
-                  value: _repeatStart != null
-                      ? _formatDateLabel(_repeatStart!)
-                      : '未選択',
-                  onTap: _pickRepeatStart,
                 ),
                 const SizedBox(height: 12),
-                _DateFieldTile(
-                  label: '終了日',
-                  value: _repeatEnd != null
-                      ? _formatDateLabel(_repeatEnd!)
-                      : '未選択',
-                  onTap: _pickRepeatEnd,
+                _FormSection(
+                  title: 'スケジュール',
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (!_isRepeating)
+                        _DateActionRow(
+                          label: '日付',
+                          value: _scheduledDate != null
+                              ? _formatDateLabel(_scheduledDate!)
+                              : '未選択',
+                          onTap: _pickScheduledDate,
+                        ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('繰り返しタスク', style: theme.textTheme.bodyLarge),
+                          Switch(
+                            value: _isRepeating,
+                            onChanged: (value) {
+                              setState(() {
+                                _isRepeating = value;
+                                if (value) {
+                                  _repeatStart ??=
+                                      _scheduledDate ?? DateTime.now();
+                                  _repeatEnd ??= _repeatStart;
+                                  _scheduledDate = null;
+                                } else {
+                                  _scheduledDate =
+                                      _repeatStart ?? DateTime.now();
+                                  _repeatStart = null;
+                                  _repeatEnd = null;
+                                }
+                              });
+                            },
+                          ),
+                        ],
+                      ),
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 200),
+                        child: !_isRepeating
+                            ? const SizedBox.shrink()
+                            : Row(
+                                children: [
+                                  Expanded(
+                                    child: _DateActionRow(
+                                      label: '開始日',
+                                      value: _repeatStart != null
+                                          ? _formatDateLabel(_repeatStart!)
+                                          : '未選択',
+                                      onTap: _pickRepeatStart,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: _DateActionRow(
+                                      label: '終了日',
+                                      value: _repeatEnd != null
+                                          ? _formatDateLabel(_repeatEnd!)
+                                          : '未選択',
+                                      onTap: _pickRepeatEnd,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                      ),
+                    ],
+                  ),
                 ),
+                const SizedBox(height: 12),
+                _FormSection(
+                  title: 'リマインダー',
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('通知を受け取る', style: theme.textTheme.bodyLarge),
+                      Switch(
+                        value: _reminderEnabled,
+                        onChanged: (value) {
+                          setState(() {
+                            _reminderEnabled = value;
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                const Spacer(),
               ],
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Reminder'),
-                value: _reminderEnabled,
-                onChanged: (value) {
-                  setState(() {
-                    _reminderEnabled = value;
-                  });
-                },
-              ),
-              const SizedBox(height: 32),
-              FilledButton(onPressed: _saveTask, child: const Text('保存')),
-            ],
+            ),
+          ),
+        ),
+      ),
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          child: FilledButton.icon(
+            onPressed: _saveTask,
+            icon: const Icon(Icons.save_outlined),
+            label: Text(isEditing ? '変更を保存' : 'タスクを作成'),
           ),
         ),
       ),
@@ -855,7 +929,7 @@ class _TaskFormPageState extends State<TaskFormPage> {
       scheduledDate = _asDateOnly(_scheduledDate!);
     }
 
-    final tasksBox = Hive.box<HabitTask>('tasks');
+    final box = Hive.box<HabitTask>('tasks');
     if (widget.taskIndex == null) {
       final task = HabitTask(
         name: _nameController.text.trim(),
@@ -866,7 +940,7 @@ class _TaskFormPageState extends State<TaskFormPage> {
         repeatStart: repeatStart,
         repeatEnd: repeatEnd,
       );
-      await tasksBox.add(task);
+      await box.add(task);
     } else {
       final existing = widget.initialTask;
       if (existing != null) {
@@ -941,8 +1015,47 @@ class _TaskFormPageState extends State<TaskFormPage> {
       DateTime(date.year, date.month, date.day);
 }
 
-class _DateFieldTile extends StatelessWidget {
-  const _DateFieldTile({
+class _FormSection extends StatelessWidget {
+  const _FormSection({required this.title, required this.child});
+
+  final String title;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: theme.colorScheme.shadow.withValues(alpha: 0.05),
+            blurRadius: 16,
+            offset: const Offset(0, 12),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 16),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+class _DateActionRow extends StatelessWidget {
+  const _DateActionRow({
     required this.label,
     required this.value,
     required this.onTap,
@@ -954,12 +1067,26 @@ class _DateFieldTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      title: Text(label),
-      subtitle: Text(value),
-      trailing: const Icon(Icons.calendar_today_outlined),
-      onTap: onTap,
+    final theme = Theme.of(context);
+    return OutlinedButton(
+      style: OutlinedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      ),
+      onPressed: onTap,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: theme.textTheme.bodyMedium),
+          Text(
+            value,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.primary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
