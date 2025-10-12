@@ -7,6 +7,7 @@
 
 import 'dart:io';
 
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive/hive.dart';
 
@@ -38,13 +39,18 @@ void main() {
     await tempDir.delete(recursive: true);
   });
 
-  testWidgets('Home tab renders with today tasks heading', (
+  testWidgets('Navigation shows Habit Penguin tabs', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(const HabitPenguinApp());
     await tester.pumpAndSettle();
 
+    expect(find.textContaining('Habit Penguin'), findsWidgets);
+    expect(find.byType(BottomNavigationBar), findsOneWidget);
+
+    await tester.tap(find.text('Tasks'));
+    await tester.pumpAndSettle();
+
     expect(find.text('今日のタスク'), findsOneWidget);
-    expect(find.text('Good job!'), findsOneWidget);
   });
 }

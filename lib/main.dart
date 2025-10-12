@@ -41,7 +41,7 @@ class HabitHomeShell extends StatefulWidget {
 }
 
 class _HabitHomeShellState extends State<HabitHomeShell> {
-  int _currentIndex = 0;
+  int _currentIndex = 1;
 
   void _onTabTapped(int index) {
     setState(() {
@@ -64,7 +64,7 @@ class _HabitHomeShellState extends State<HabitHomeShell> {
 
   @override
   Widget build(BuildContext context) {
-    final tabTitles = ['Home', 'Tasks'];
+    final tabTitles = ['Tasks', 'Home', 'Penguin'];
     return Scaffold(
       appBar: AppBar(
         title: Text('Habit Penguin - ${tabTitles[_currentIndex]}'),
@@ -72,15 +72,16 @@ class _HabitHomeShellState extends State<HabitHomeShell> {
       body: IndexedStack(
         index: _currentIndex,
         children: [
-          const HomeTab(),
           TasksTab(
             onEditTask: (index, task) {
               _openTaskForm(context, initialTask: task, taskIndex: index);
             },
           ),
+          const HomeTab(),
+          const PenguinTab(),
         ],
       ),
-      floatingActionButton: _currentIndex == 1
+      floatingActionButton: _currentIndex == 0
           ? FloatingActionButton(
               onPressed: () => _openTaskForm(context),
               tooltip: 'Add Task',
@@ -91,8 +92,12 @@ class _HabitHomeShellState extends State<HabitHomeShell> {
         currentIndex: _currentIndex,
         onTap: _onTabTapped,
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
           BottomNavigationBarItem(icon: Icon(Icons.checklist), label: 'Tasks'),
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.emoji_people),
+            label: 'Penguin',
+          ),
         ],
       ),
     );
@@ -120,17 +125,26 @@ class _HomeTabState extends State<HomeTab> {
     return ValueListenableBuilder<Box<HabitTask>>(
       valueListenable: _tasksBox.listenable(),
       builder: (context, tasksBox, _) {
-        final tasks = tasksBox.values.toList(growable: false);
-        final reminderOnCount =
-            tasks.where((task) => task.reminderEnabled).length;
+        final today = DateTime.now();
+        final todaysEntries = <MapEntry<int, HabitTask>>[];
+        var openTaskCount = 0;
+        for (var i = 0; i < tasksBox.length; i++) {
+          final task = tasksBox.getAt(i);
+          if (task == null || task.isCompleted) {
+            continue;
+          }
+          openTaskCount++;
+          if (todaysEntries.length < 3 && task.isActiveOn(today)) {
+            todaysEntries.add(MapEntry(i, task));
+          }
+        }
         return DecoratedBox(
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
-                Theme.of(context)
-                    .colorScheme
-                    .primaryContainer
-                    .withOpacity(0.35),
+                Theme.of(
+                  context,
+                ).colorScheme.primaryContainer.withValues(alpha: 0.35),
                 Theme.of(context).colorScheme.surface,
               ],
               begin: Alignment.topCenter,
@@ -144,30 +158,47 @@ class _HomeTabState extends State<HomeTab> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _PenguinHeroSection(totalTasks: tasks.length),
+                  _PenguinHeroSection(totalTasks: openTaskCount),
+                  const SizedBox(height: 32),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const SizedBox(height: 24),
-                        _HomeStatsRow(
-                          totalTasks: tasks.length,
-                          reminderOnCount: reminderOnCount,
-                        ),
-                        const SizedBox(height: 32),
                         Text(
-                          '今日のクエスト',
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleLarge
+                          '今日のタスク',
+                          style: Theme.of(context).textTheme.titleLarge
                               ?.copyWith(fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 16),
-                        if (tasks.isEmpty)
-                          const _EmptyTaskCard()
-                        else
-                          _TaskPreviewList(tasks: tasks),
+                        if (todaysEntries.isEmpty) ...[
+                          const _CreateTaskCallout(),
+                        ] else ...[
+                          for (var i = 0; i < todaysEntries.length; i++)
+                            Padding(
+                              padding: EdgeInsets.only(
+                                bottom: i == todaysEntries.length - 1 ? 0 : 12,
+                              ),
+                              child: _TodayTaskCard(
+                                task: todaysEntries[i].value,
+                                index: todaysEntries[i].key,
+                              ),
+                            ),
+                          if (openTaskCount > todaysEntries.length)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 16),
+                              child: Text(
+                                '残りのタスクはTasksタブで確認できます。',
+                                style: Theme.of(context).textTheme.bodySmall
+                                    ?.copyWith(
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.secondary,
+                                    ),
+                              ),
+                            ),
+                        ],
                       ],
                     ),
                   ),
@@ -189,23 +220,17 @@ class _PenguinHeroSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final surfaceOverlay = Color.lerp(
-          theme.colorScheme.surface,
-          Colors.white,
-          0.75,
-        ) ??
-        theme.colorScheme.surface;
     final screenHeight = MediaQuery.of(context).size.height;
-    final heroHeight = math.max(screenHeight * 0.6, 420.0);
+    final heroHeight = math.max(screenHeight * 0.5, 360.0);
     return SizedBox(
       height: heroHeight,
       child: LayoutBuilder(
         builder: (context, constraints) {
           final width = constraints.maxWidth;
           final penguinWidth = math.min(width * 0.55, 260.0);
-          final iceWidth = math.min(width * 0.85, 360.0);
-          final penguinBottom = heroHeight * 0.22;
-          final iceBottom = heroHeight * 0.1;
+          final iceWidth = math.min(width * 0.95, 380.0);
+          final penguinBottom = heroHeight * 0.01;
+          final iceBottom = -heroHeight * 0.2;
           return Stack(
             fit: StackFit.expand,
             children: [
@@ -223,9 +248,9 @@ class _PenguinHeroSection extends StatelessWidget {
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
                       colors: [
-                        Colors.black.withOpacity(0.15),
+                        Colors.black.withValues(alpha: 0.15),
                         Colors.transparent,
-                        theme.colorScheme.surface.withOpacity(0.85),
+                        theme.colorScheme.surface.withValues(alpha: 0.85),
                       ],
                       stops: const [0.0, 0.55, 1.0],
                     ),
@@ -250,10 +275,18 @@ class _PenguinHeroSection extends StatelessWidget {
                     Text(
                       'ペンギンと一緒に今日のクエストをこなそう',
                       style: theme.textTheme.bodyLarge?.copyWith(
-                        color: Colors.white.withOpacity(0.9),
+                        color: Colors.white.withValues(alpha: 0.9),
                       ),
                     ),
                   ],
+                ),
+              ),
+              Positioned(
+                bottom: iceBottom,
+                left: (width - iceWidth) / 2,
+                child: SizedBox(
+                  width: iceWidth,
+                  child: Image.asset('assets/ice.png', fit: BoxFit.contain),
                 ),
               ),
               Positioned(
@@ -267,47 +300,37 @@ class _PenguinHeroSection extends StatelessWidget {
                   ),
                 ),
               ),
-              Positioned(
-                bottom: iceBottom,
-                left: (width - iceWidth) / 2,
-                child: SizedBox(
-                  width: iceWidth,
-                  child: Image.asset(
-                    'assets/ice.png',
-                    fit: BoxFit.contain,
-                  ),
-                ),
-              ),
-              Positioned(
-                left: 24,
-                right: 24,
-                bottom: 24,
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-                  decoration: BoxDecoration(
-                    color: surfaceOverlay.withOpacity(0.9),
-                    borderRadius: BorderRadius.circular(24),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.emoji_events, size: 22),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          totalTasks > 0
-                              ? 'クエストは${totalTasks}件！達成でペンギンにごほうびをあげよう。'
-                              : 'タスクタブで「＋」を押して最初のクエストを追加しよう。',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color:
-                                theme.colorScheme.onSurface.withOpacity(0.95),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+              // Positioned(
+              //   left: 24,
+              //   right: 24,
+              //   bottom: 24,
+              //   child: Container(
+              //     padding: const EdgeInsets.symmetric(
+              //       horizontal: 20,
+              //       vertical: 18,
+              //     ),
+              //     decoration: BoxDecoration(
+              //       color: surfaceOverlay.withValues(alpha: 0.9),
+              //       borderRadius: BorderRadius.circular(24),
+              //     ),
+              //     // child: Row(
+              //     //   children: [
+              //     //     const Icon(Icons.emoji_events, size: 22),
+              //     //     const SizedBox(width: 12),
+              //     //     Expanded(
+              //     //       child: Text(
+              //     //         'クエストは$totalTasks件！達成でペンギンにごほうびをあげよう。',
+              //     //         style: theme.textTheme.bodyMedium?.copyWith(
+              //     //           color: theme.colorScheme.onSurface.withValues(
+              //     //             alpha: 0.95,
+              //     //           ),
+              //     //         ),
+              //     //       ),
+              //     //     ),
+              //     //   ],
+              //     // ),
+              //   ),
+              // ),
             ],
           );
         },
@@ -316,95 +339,93 @@ class _PenguinHeroSection extends StatelessWidget {
   }
 }
 
-class _HomeStatsRow extends StatelessWidget {
-  const _HomeStatsRow({
-    required this.totalTasks,
-    required this.reminderOnCount,
-  });
+class _TodayTaskCard extends StatelessWidget {
+  const _TodayTaskCard({required this.task, required this.index});
 
-  final int totalTasks;
-  final int reminderOnCount;
+  final HabitTask task;
+  final int index;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: _HomeStatCard(
-            icon: Icons.check_circle_outline,
-            label: '登録タスク',
-            valueText: '$totalTasks 件',
+    final theme = Theme.of(context);
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(24),
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => TaskFormPage(initialTask: task, taskIndex: index),
+            ),
+          );
+        },
+        child: Ink(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surface,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: theme.colorScheme.shadow.withValues(alpha: 0.05),
+                blurRadius: 16,
+                offset: const Offset(0, 12),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 24,
+                backgroundColor: theme.colorScheme.primaryContainer,
+                foregroundColor: theme.colorScheme.onPrimaryContainer,
+                child: Icon(task.iconData, size: 24),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      task.name,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${_difficultyLabel(task.difficulty)} • ${_scheduleLabel(task)}',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.outline,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right, color: theme.colorScheme.outline),
+            ],
           ),
         ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: _HomeStatCard(
-            icon: Icons.alarm_on,
-            label: 'リマインダーON',
-            valueText: '$reminderOnCount 件',
-          ),
-        ],
       ),
     );
   }
 }
 
-class _HomeStatsRow extends StatelessWidget {
-  const _HomeStatsRow({
-    required this.totalTasks,
-    required this.reminderOnCount,
-  });
-
-  final int totalTasks;
-  final int reminderOnCount;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: _HomeStatCard(
-            icon: Icons.check_circle_outline,
-            label: '登録タスク',
-            valueText: '$totalTasks 件',
-          ),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: _HomeStatCard(
-            icon: Icons.alarm_on,
-            label: 'リマインダーON',
-            valueText: '$reminderOnCount 件',
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _HomeStatCard extends StatelessWidget {
-  const _HomeStatCard({
-    required this.icon,
-    required this.label,
-    required this.valueText,
-  });
-
-  final IconData icon;
-  final String label;
-  final String valueText;
+class _CreateTaskCallout extends StatelessWidget {
+  const _CreateTaskCallout();
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: theme.colorScheme.shadow.withOpacity(0.06),
-            blurRadius: 18,
+            color: theme.colorScheme.shadow.withValues(alpha: 0.05),
+            blurRadius: 16,
             offset: const Offset(0, 10),
           ),
         ],
@@ -414,7 +435,7 @@ class _HomeStatCard extends StatelessWidget {
           CircleAvatar(
             backgroundColor: theme.colorScheme.primaryContainer,
             foregroundColor: theme.colorScheme.onPrimaryContainer,
-            child: Icon(icon),
+            child: const Icon(Icons.add_task),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -422,166 +443,18 @@ class _HomeStatCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  label,
-                  style: theme.textTheme.labelMedium?.copyWith(
-                    color: theme.colorScheme.secondary,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  valueText,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TaskPreviewList extends StatelessWidget {
-  const _TaskPreviewList({required this.tasks});
-
-  final List<HabitTask> tasks;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final previewCount = math.min(3, tasks.length);
-    return Column(
-      children: [
-        for (var i = 0; i < previewCount; i++) ...[
-          _TaskPreviewCard(task: tasks[i]),
-          if (i != previewCount - 1) const SizedBox(height: 12),
-        ],
-        if (tasks.length > previewCount) ...[
-          const SizedBox(height: 16),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              '全てのクエストはタスクタブで確認できます。',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.secondary,
-              ),
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-}
-
-class _TaskPreviewCard extends StatelessWidget {
-  const _TaskPreviewCard({required this.task});
-
-  final HabitTask task;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: theme.colorScheme.shadow.withOpacity(0.05),
-            blurRadius: 16,
-            offset: const Offset(0, 12),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 28,
-            backgroundColor: theme.colorScheme.primaryContainer,
-            foregroundColor: theme.colorScheme.onPrimaryContainer,
-            child: Icon(task.iconData, size: 26),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  task.name,
+                  '今日のクエストを作成しよう',
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w600,
                   ),
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  task.reminderEnabled
-                      ? 'リマインダー：ON'
-                      : 'リマインダー：OFF',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.secondary,
-                  ),
+                  'Tasksタブ右下の「＋」ボタンから新しいタスクを追加できます。',
+                  style: theme.textTheme.bodySmall,
                 ),
               ],
             ),
-          ),
-          Icon(
-            Icons.chevron_right,
-            color: theme.colorScheme.outline,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _EmptyTaskCard extends StatelessWidget {
-  const _EmptyTaskCard();
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: theme.colorScheme.shadow.withOpacity(0.05),
-            blurRadius: 16,
-            offset: const Offset(0, 12),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              CircleAvatar(
-                backgroundColor: theme.colorScheme.primaryContainer,
-                foregroundColor: theme.colorScheme.onPrimaryContainer,
-                child: const Icon(Icons.lightbulb_outline),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Text(
-                  'クエストを作成してペンギンに日課を教えよう！',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'タスクタブの右下にある「＋」ボタンから新しいクエストを追加できます。',
-            style: theme.textTheme.bodyMedium,
           ),
         ],
       ),
@@ -596,55 +469,100 @@ class TasksTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final box = Hive.box<HabitTask>('tasks');
-    return ValueListenableBuilder<Box<HabitTask>>(
-      valueListenable: box.listenable(),
-      builder: (context, tasksBox, _) {
-        if (tasksBox.isEmpty) {
-          return Center(
-            child: Text(
-              'タスクがまだありません。右下の＋で追加しよう。',
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-          );
-        }
+    final tasksBox = Hive.box<HabitTask>('tasks');
+    final appStateBox = Hive.box('appState');
 
-        return ListView.separated(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-          itemCount: tasksBox.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 12),
-          itemBuilder: (context, index) {
-            final task = tasksBox.getAt(index);
-            if (task == null) {
-              return const SizedBox.shrink();
+    return ValueListenableBuilder<Box>(
+      valueListenable: appStateBox.listenable(),
+      builder: (context, appState, _) {
+        final currentXp = (appState.get('xp') as int?) ?? 0;
+        return ValueListenableBuilder<Box<HabitTask>>(
+          valueListenable: tasksBox.listenable(),
+          builder: (context, box, __) {
+            final today = DateTime.now();
+            final activeEntries = <MapEntry<int, HabitTask>>[];
+            final openEntries = <MapEntry<int, HabitTask>>[];
+
+            for (var i = 0; i < box.length; i++) {
+              final task = box.getAt(i);
+              if (task == null) continue;
+              if (task.isCompleted) {
+                continue;
+              }
+              final entry = MapEntry(i, task);
+              openEntries.add(entry);
+              if (task.isActiveOn(today)) {
+                activeEntries.add(entry);
+              }
             }
-            return Material(
-              elevation: 0,
-              color: Theme.of(context).colorScheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(16),
-              child: ListTile(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+
+            final activeKeys = activeEntries.map((entry) => entry.key).toSet();
+            final backlogEntries = openEntries
+                .where((entry) => !activeKeys.contains(entry.key))
+                .toList();
+
+            return ListView(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      '経験値: $currentXp XP',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const Spacer(),
+                    TextButton.icon(
+                      onPressed: () => _openCompletedTasks(context),
+                      icon: const Icon(Icons.history),
+                      label: const Text('完了済み'),
+                    ),
+                  ],
                 ),
-                leading: CircleAvatar(
-                  backgroundColor: Theme.of(
-                    context,
-                  ).colorScheme.primaryContainer,
-                  child: Icon(
-                    task.iconData,
-                    color: Theme.of(context).colorScheme.onPrimaryContainer,
+                const SizedBox(height: 16),
+                Text('今日のタスク', style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: 12),
+                if (activeEntries.isEmpty)
+                  Text(
+                    '今日は予定されたタスクがありません。',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  )
+                else
+                  ...activeEntries.map(
+                    (entry) => Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: _TaskListTile(
+                        task: entry.value,
+                        onTap: () => onEditTask(entry.key, entry.value),
+                        onDelete: () => _confirmDelete(context, entry.key),
+                        onComplete: () => _completeTask(context, entry.key),
+                        isActive: true,
+                      ),
+                    ),
                   ),
-                ),
-                title: Text(task.name),
-                subtitle: Text(
-                  task.reminderEnabled ? 'Reminder: ON' : 'Reminder: OFF',
-                ),
-                onTap: () => onEditTask(index, task),
-                trailing: IconButton(
-                  icon: const Icon(Icons.delete_outline),
-                  onPressed: () => _confirmDelete(context, index),
-                ),
-              ),
+                const SizedBox(height: 24),
+                Text('登録中のタスク', style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: 12),
+                if (openEntries.isEmpty)
+                  Text(
+                    'タスクがまだありません。右下の＋で追加しよう。',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  )
+                else
+                  ...backlogEntries.map(
+                    (entry) => Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: _TaskListTile(
+                        task: entry.value,
+                        onTap: () => onEditTask(entry.key, entry.value),
+                        onDelete: () => _confirmDelete(context, entry.key),
+                        onComplete: () => _completeTask(context, entry.key),
+                        isActive: entry.value.isActiveOn(today),
+                      ),
+                    ),
+                  ),
+              ],
             );
           },
         );
@@ -686,6 +604,38 @@ class TasksTab extends StatelessWidget {
       context,
     ).showSnackBar(const SnackBar(content: Text('タスクを削除しました。')));
   }
+
+  Future<void> _completeTask(BuildContext context, int index) async {
+    final tasksBox = Hive.box<HabitTask>('tasks');
+    final task = tasksBox.getAt(index);
+    if (task == null || task.isCompleted) {
+      return;
+    }
+
+    final gainedXp = _xpForDifficulty(task.difficulty);
+
+    task
+      ..isCompleted = true
+      ..completedAt = DateTime.now()
+      ..completionXp = gainedXp;
+    await task.save();
+
+    final appStateBox = Hive.box('appState');
+    final currentXp = (appStateBox.get('xp') as int?) ?? 0;
+    await appStateBox.put('xp', currentXp + gainedXp);
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('$gainedXp XP獲得！')));
+    }
+  }
+
+  void _openCompletedTasks(BuildContext context) {
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute<void>(builder: (_) => const CompletedTasksPage()));
+  }
 }
 
 class TaskFormPage extends StatefulWidget {
@@ -703,6 +653,11 @@ class _TaskFormPageState extends State<TaskFormPage> {
   late final TextEditingController _nameController;
   late bool _reminderEnabled;
   late int _selectedIconCodePoint;
+  late TaskDifficulty _selectedDifficulty;
+  DateTime? _scheduledDate;
+  bool _isRepeating = false;
+  DateTime? _repeatStart;
+  DateTime? _repeatEnd;
 
   @override
   void initState() {
@@ -712,6 +667,16 @@ class _TaskFormPageState extends State<TaskFormPage> {
     _reminderEnabled = initialTask?.reminderEnabled ?? false;
     _selectedIconCodePoint =
         initialTask?.iconCodePoint ?? _iconOptions.first.codePoint;
+    _selectedDifficulty = initialTask?.difficulty ?? TaskDifficulty.normal;
+    _isRepeating = initialTask?.isRepeating ?? false;
+    _repeatStart = initialTask?.repeatStart;
+    _repeatEnd = initialTask?.repeatEnd;
+    _scheduledDate = initialTask?.scheduledDate ?? DateTime.now();
+    if (_isRepeating) {
+      _scheduledDate = null;
+      _repeatStart ??= DateTime.now();
+      _repeatEnd ??= _repeatStart;
+    }
   }
 
   @override
@@ -766,12 +731,78 @@ class _TaskFormPageState extends State<TaskFormPage> {
                 }).toList(),
               ),
               const SizedBox(height: 24),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.calendar_month),
-                title: const Text('Frequency'),
-                subtitle: const Text('Daily'),
+              Text('難易度', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 12),
+              SegmentedButton<TaskDifficulty>(
+                segments: const [
+                  ButtonSegment(
+                    value: TaskDifficulty.easy,
+                    label: Text('Easy'),
+                  ),
+                  ButtonSegment(
+                    value: TaskDifficulty.normal,
+                    label: Text('Normal'),
+                  ),
+                  ButtonSegment(
+                    value: TaskDifficulty.hard,
+                    label: Text('Hard'),
+                  ),
+                ],
+                selected: {_selectedDifficulty},
+                onSelectionChanged: (selection) {
+                  setState(() {
+                    _selectedDifficulty = selection.first;
+                  });
+                },
               ),
+              const SizedBox(height: 24),
+              Text('日付', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 12),
+              if (!_isRepeating)
+                _DateFieldTile(
+                  label: '日付',
+                  value: _scheduledDate != null
+                      ? _formatDateLabel(_scheduledDate!)
+                      : '未選択',
+                  onTap: _pickScheduledDate,
+                ),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('繰り返しタスク'),
+                subtitle: const Text('開始と終了期間を設定できます'),
+                value: _isRepeating,
+                onChanged: (value) {
+                  setState(() {
+                    _isRepeating = value;
+                    if (value) {
+                      _repeatStart ??= _scheduledDate ?? DateTime.now();
+                      _repeatEnd ??= _repeatStart;
+                      _scheduledDate = null;
+                    } else {
+                      _scheduledDate = _repeatStart ?? DateTime.now();
+                      _repeatStart = null;
+                      _repeatEnd = null;
+                    }
+                  });
+                },
+              ),
+              if (_isRepeating) ...[
+                _DateFieldTile(
+                  label: '開始日',
+                  value: _repeatStart != null
+                      ? _formatDateLabel(_repeatStart!)
+                      : '未選択',
+                  onTap: _pickRepeatStart,
+                ),
+                const SizedBox(height: 12),
+                _DateFieldTile(
+                  label: '終了日',
+                  value: _repeatEnd != null
+                      ? _formatDateLabel(_repeatEnd!)
+                      : '未選択',
+                  onTap: _pickRepeatEnd,
+                ),
+              ],
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
                 title: const Text('Reminder'),
@@ -796,17 +827,59 @@ class _TaskFormPageState extends State<TaskFormPage> {
       return;
     }
 
-    final box = Hive.box<HabitTask>('tasks');
-    final task = HabitTask(
-      name: _nameController.text.trim(),
-      iconCodePoint: _selectedIconCodePoint,
-      reminderEnabled: _reminderEnabled,
-    );
+    final messenger = ScaffoldMessenger.of(context);
+    DateTime? scheduledDate;
+    DateTime? repeatStart;
+    DateTime? repeatEnd;
 
-    if (widget.taskIndex == null) {
-      await box.add(task);
+    if (_isRepeating) {
+      if (_repeatStart == null || _repeatEnd == null) {
+        messenger.showSnackBar(
+          const SnackBar(content: Text('開始日と終了日を選択してください。')),
+        );
+        return;
+      }
+      if (_repeatEnd!.isBefore(_repeatStart!)) {
+        messenger.showSnackBar(
+          const SnackBar(content: Text('終了日は開始日以降を選択してください。')),
+        );
+        return;
+      }
+      repeatStart = _asDateOnly(_repeatStart!);
+      repeatEnd = _asDateOnly(_repeatEnd!);
     } else {
-      await box.putAt(widget.taskIndex!, task);
+      if (_scheduledDate == null) {
+        messenger.showSnackBar(const SnackBar(content: Text('日付を選択してください。')));
+        return;
+      }
+      scheduledDate = _asDateOnly(_scheduledDate!);
+    }
+
+    final tasksBox = Hive.box<HabitTask>('tasks');
+    if (widget.taskIndex == null) {
+      final task = HabitTask(
+        name: _nameController.text.trim(),
+        iconCodePoint: _selectedIconCodePoint,
+        reminderEnabled: _reminderEnabled,
+        difficulty: _selectedDifficulty,
+        scheduledDate: scheduledDate,
+        repeatStart: repeatStart,
+        repeatEnd: repeatEnd,
+      );
+      await tasksBox.add(task);
+    } else {
+      final existing = widget.initialTask;
+      if (existing != null) {
+        existing
+          ..name = _nameController.text.trim()
+          ..iconCodePoint = _selectedIconCodePoint
+          ..reminderEnabled = _reminderEnabled
+          ..difficulty = _selectedDifficulty
+          ..scheduledDate = scheduledDate
+          ..repeatStart = repeatStart
+          ..repeatEnd = repeatEnd;
+        await existing.save();
+      }
     }
 
     if (!mounted) {
@@ -815,74 +888,167 @@ class _TaskFormPageState extends State<TaskFormPage> {
 
     Navigator.of(context).pop();
   }
+
+  Future<void> _pickScheduledDate() async {
+    final initial = _scheduledDate ?? DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2100),
+    );
+    if (picked != null) {
+      setState(() {
+        _scheduledDate = _asDateOnly(picked);
+      });
+    }
+  }
+
+  Future<void> _pickRepeatStart() async {
+    final base = _repeatStart ?? DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: base,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2100),
+    );
+    if (picked != null) {
+      setState(() {
+        _repeatStart = _asDateOnly(picked);
+        if (_repeatEnd != null && _repeatEnd!.isBefore(_repeatStart!)) {
+          _repeatEnd = _repeatStart;
+        }
+      });
+    }
+  }
+
+  Future<void> _pickRepeatEnd() async {
+    final base = _repeatEnd ?? _repeatStart ?? DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: base,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2100),
+    );
+    if (picked != null) {
+      setState(() {
+        _repeatEnd = _asDateOnly(picked);
+      });
+    }
+  }
+
+  DateTime _asDateOnly(DateTime date) =>
+      DateTime(date.year, date.month, date.day);
 }
 
-class _TaskCard extends StatelessWidget {
-  const _TaskCard({
+class _DateFieldTile extends StatelessWidget {
+  const _DateFieldTile({
+    required this.label,
+    required this.value,
+    required this.onTap,
+  });
+
+  final String label;
+  final String value;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      title: Text(label),
+      subtitle: Text(value),
+      trailing: const Icon(Icons.calendar_today_outlined),
+      onTap: onTap,
+    );
+  }
+}
+
+class _TaskListTile extends StatelessWidget {
+  const _TaskListTile({
     required this.task,
-    required this.isChecked,
-    required this.onToggle,
+    required this.onTap,
+    required this.onDelete,
+    required this.onComplete,
+    required this.isActive,
   });
 
   final HabitTask task;
-  final bool isChecked;
-  final VoidCallback onToggle;
+  final VoidCallback onTap;
+  final VoidCallback onDelete;
+  final VoidCallback onComplete;
+  final bool isActive;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final borderColor = isChecked
-        ? theme.colorScheme.primary
-        : theme.colorScheme.outlineVariant;
+    final decoration = BoxDecoration(
+      color: theme.colorScheme.surfaceContainerHighest,
+      borderRadius: BorderRadius.circular(16),
+      border: isActive
+          ? Border.all(color: theme.colorScheme.primary, width: 1.2)
+          : null,
+    );
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: onToggle,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(16),
+        onTap: onTap,
         child: Ink(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(24),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x1A3A6073),
-                blurRadius: 18,
-                offset: Offset(0, 8),
-              ),
-            ],
-          ),
+          decoration: decoration,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _TaskIconBadge(icon: task.iconData),
-              const SizedBox(width: 16),
+              CircleAvatar(
+                backgroundColor: theme.colorScheme.primaryContainer,
+                child: Icon(
+                  task.iconData,
+                  color: theme.colorScheme.onPrimaryContainer,
+                ),
+              ),
+              const SizedBox(width: 14),
               Expanded(
-                child: Text(
-                  task.name,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0xFF294B72),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(task.name, style: theme.textTheme.titleMedium),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${_difficultyLabel(task.difficulty)} • ${_scheduleLabel(task)}',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.outline,
+                      ),
+                    ),
+                    if (task.reminderEnabled)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          'Reminder ON',
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: theme.colorScheme.primary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.check_circle_outline),
+                    color: theme.colorScheme.primary,
+                    tooltip: '完了にする',
+                    onPressed: onComplete,
                   ),
-                ),
-              ),
-              Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  color: isChecked
-                      ? theme.colorScheme.primary.withOpacity(0.18)
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(width: 2, color: borderColor),
-                ),
-                alignment: Alignment.center,
-                child: isChecked
-                    ? Icon(
-                        Icons.check,
-                        size: 18,
-                        color: theme.colorScheme.primary,
-                      )
-                    : null,
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline),
+                    onPressed: onDelete,
+                  ),
+                ],
               ),
             ],
           ),
@@ -892,98 +1058,162 @@ class _TaskCard extends StatelessWidget {
   }
 }
 
-class _TaskIconBadge extends StatelessWidget {
-  const _TaskIconBadge({required this.icon});
-
-  final IconData icon;
+class CompletedTasksPage extends StatelessWidget {
+  const CompletedTasksPage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      width: 48,
-      height: 48,
-      decoration: BoxDecoration(
-        color: theme.colorScheme.primary.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Icon(icon, color: theme.colorScheme.primary, size: 26),
-    );
-  }
-}
+    final tasksBox = Hive.box<HabitTask>('tasks');
+    final appStateBox = Hive.box('appState');
 
-class _SpeechBubble extends StatelessWidget {
-  const _SpeechBubble({required this.message});
-
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    final bubbleColor = Colors.white.withOpacity(0.95);
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
-          decoration: BoxDecoration(
-            color: bubbleColor,
-            borderRadius: BorderRadius.circular(32),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x143A6073),
-                blurRadius: 16,
-                offset: Offset(0, 8),
+    return ValueListenableBuilder<Box>(
+      valueListenable: appStateBox.listenable(),
+      builder: (context, appState, _) {
+        final currentXp = (appState.get('xp') as int?) ?? 0;
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('完了済みタスク'),
+            actions: [
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                child: Center(child: Text('経験値: $currentXp XP')),
               ),
             ],
           ),
-          child: Text(
-            message,
-            style:
-                Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF294B72),
-                ) ??
-                TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF294B72),
-                ),
+          body: ValueListenableBuilder<Box<HabitTask>>(
+            valueListenable: tasksBox.listenable(),
+            builder: (context, box, __) {
+              final completed = <HabitTask>[];
+              for (var i = 0; i < box.length; i++) {
+                final task = box.getAt(i);
+                if (task == null || !task.isCompleted) continue;
+                completed.add(task);
+              }
+              completed.sort((a, b) {
+                final aDate =
+                    a.completedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+                final bDate =
+                    b.completedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+                return bDate.compareTo(aDate);
+              });
+
+              if (completed.isEmpty) {
+                return Center(
+                  child: Text(
+                    '完了済みのタスクはまだありません。',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                );
+              }
+
+              return ListView.separated(
+                padding: const EdgeInsets.all(16),
+                itemCount: completed.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 12),
+                itemBuilder: (context, index) {
+                  final task = completed[index];
+                  final xp =
+                      task.completionXp ?? _xpForDifficulty(task.difficulty);
+                  final completedAt = task.completedAt;
+                  final parts = <String>[
+                    _difficultyLabel(task.difficulty),
+                    '獲得XP: $xp',
+                  ];
+                  if (completedAt != null) {
+                    parts.add('完了日: ${_formatDateLabel(completedAt)}');
+                  }
+
+                  return ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: Theme.of(
+                        context,
+                      ).colorScheme.secondaryContainer,
+                      foregroundColor: Theme.of(
+                        context,
+                      ).colorScheme.onSecondaryContainer,
+                      child: Icon(task.iconData),
+                    ),
+                    title: Text(task.name),
+                    subtitle: Text(parts.join(' • ')),
+                  );
+                },
+              );
+            },
           ),
-        ),
-        Positioned(
-          bottom: -12,
-          left: 40,
-          child: CustomPaint(
-            size: const Size(28, 18),
-            painter: _BubbleTailPainter(color: bubbleColor),
-          ),
-        ),
-      ],
+        );
+      },
     );
   }
 }
 
-class _BubbleTailPainter extends CustomPainter {
-  _BubbleTailPainter({required this.color});
-
-  final Color color;
+class PenguinTab extends StatelessWidget {
+  const PenguinTab({super.key});
 
   @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.fill;
-    final path = Path()
-      ..moveTo(0, 0)
-      ..lineTo(size.width, 0)
-      ..lineTo(size.width * 0.45, size.height)
-      ..close();
-    canvas.drawPath(path, paint);
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Image.asset('assets/penguin_normal.png', width: 160),
+            const SizedBox(height: 16),
+            Text(
+              'ペンギンルームは準備中！',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '次のアップデートでミッションや表情変化が登場予定です。',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+          ],
+        ),
+      ),
+    );
   }
+}
 
-  @override
-  bool shouldRepaint(covariant _BubbleTailPainter oldDelegate) {
-    return oldDelegate.color != color;
+String _difficultyLabel(TaskDifficulty difficulty) {
+  switch (difficulty) {
+    case TaskDifficulty.easy:
+      return 'Easy';
+    case TaskDifficulty.normal:
+      return 'Normal';
+    case TaskDifficulty.hard:
+      return 'Hard';
+  }
+}
+
+String _scheduleLabel(HabitTask task) {
+  if (task.isRepeating && task.repeatStart != null && task.repeatEnd != null) {
+    return '${_formatDateLabel(task.repeatStart!)} 〜 ${_formatDateLabel(task.repeatEnd!)}';
+  }
+  if (task.scheduledDate != null) {
+    return _formatDateLabel(task.scheduledDate!);
+  }
+  return 'いつでも';
+}
+
+String _formatDateLabel(DateTime date) {
+  final month = date.month.toString().padLeft(2, '0');
+  final day = date.day.toString().padLeft(2, '0');
+  return '${date.year}/$month/$day';
+}
+
+int _xpForDifficulty(TaskDifficulty difficulty) {
+  switch (difficulty) {
+    case TaskDifficulty.easy:
+      return 5;
+    case TaskDifficulty.normal:
+      return 30;
+    case TaskDifficulty.hard:
+      return 50;
   }
 }
 
@@ -997,5 +1227,3 @@ const List<IconData> _iconOptions = [
   Icons.brush,
   Icons.nightlight_round,
 ];
-
-const List<String> _cheerMessages = ['やったね！', 'えらい！', 'グッジョブ🐧'];
