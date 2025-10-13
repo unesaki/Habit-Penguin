@@ -232,7 +232,7 @@ class _PenguinHeroSection extends StatelessWidget {
           final penguinWidth = math.min(width * 0.55, 260.0);
           final iceWidth = math.min(width * 0.95, 380.0);
           final penguinBottom = heroHeight * 0.01;
-          final iceBottom = -heroHeight * 0.2;
+          final iceBottom = -heroHeight * 0.25;
           return Stack(
             fit: StackFit.expand,
             children: [
@@ -294,18 +294,75 @@ class _PenguinHeroSection extends StatelessWidget {
               Positioned(
                 bottom: penguinBottom,
                 left: (width - penguinWidth) / 2,
-                child: SizedBox(
-                  width: penguinWidth,
-                  child: Image.asset(
-                    'assets/penguin_normal.png',
-                    fit: BoxFit.contain,
-                  ),
-                ),
+                child: _HappyPenguinAnimator(width: penguinWidth),
               ),
             ],
           );
         },
       ),
+    );
+  }
+}
+
+class _HappyPenguinAnimator extends StatefulWidget {
+  const _HappyPenguinAnimator({required this.width});
+
+  final double width;
+
+  @override
+  State<_HappyPenguinAnimator> createState() => _HappyPenguinAnimatorState();
+}
+
+class _HappyPenguinAnimatorState extends State<_HappyPenguinAnimator>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _offsetAnimation;
+  late final Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1400),
+    )..repeat(reverse: true);
+
+    _offsetAnimation = Tween<double>(
+      begin: 1,
+      end: 1,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+
+    _scaleAnimation = Tween<double>(
+      begin: 1,
+      end: 1,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Transform.translate(
+          offset: Offset(_offsetAnimation.value, 0),
+          child: Transform.scale(
+            scale: _scaleAnimation.value,
+            child: SizedBox(
+              width: widget.width,
+              child: Image.asset(
+                'assets/happy_penguin.gif',
+                fit: BoxFit.contain,
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -1287,7 +1344,7 @@ class PenguinTab extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Image.asset('assets/penguin_normal.png', width: 160),
+            Image.asset('assets/happy_penguin.gif', width: 160),
             const SizedBox(height: 16),
             Text(
               'ペンギンルームは準備中！',

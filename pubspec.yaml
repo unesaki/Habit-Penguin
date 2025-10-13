@@ -60,9 +60,9 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/penguin_normal.png
     - assets/ice.png
     - assets/bg.png
+    - assets/happy_penguin.gif
 
   # To add assets to your application, add an assets section, like this:
   # assets:
