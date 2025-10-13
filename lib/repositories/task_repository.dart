@@ -2,15 +2,17 @@ import 'package:hive/hive.dart';
 
 import '../models/habit_task.dart';
 import '../models/task_completion_history.dart';
+import '../services/notification_service.dart';
 import 'completion_history_repository.dart';
 
 /// タスクデータへのアクセスを管理するRepository
 /// Hiveへの直接アクセスをカプセル化し、ビジネスロジックを提供
 class TaskRepository {
-  TaskRepository(this._box, this._historyRepo);
+  TaskRepository(this._box, this._historyRepo, [this._notificationService]);
 
   final Box<HabitTask> _box;
   final CompletionHistoryRepository _historyRepo;
+  final NotificationService? _notificationService;
 
   /// すべてのタスクを取得
   List<HabitTask> getAllTasks() {
@@ -101,18 +103,47 @@ class TaskRepository {
 
   /// 新しいタスクを追加
   Future<void> addTask(HabitTask task) async {
-    await _box.add(task);
+    final index = await _box.add(task);
+
+    // リマインダーが有効な場合、通知をスケジュール
+    if (task.reminderEnabled && task.reminderTime != null) {
+      await _notificationService?.scheduleTaskNotification(
+        index,
+        task,
+        task.reminderTime!,
+      );
+    }
   }
 
   /// タスクを更新（既存のHiveObjectの場合）
   Future<void> updateTask(HabitTask task) async {
     await task.save();
+
+    // タスクのインデックスを取得
+    final index = _box.values.toList().indexOf(task);
+    if (index == -1) return;
+
+    // リマインダーが有効な場合、通知をスケジュール
+    if (task.reminderEnabled && task.reminderTime != null) {
+      await _notificationService?.scheduleTaskNotification(
+        index,
+        task,
+        task.reminderTime!,
+      );
+    } else {
+      // リマインダーが無効の場合、通知をキャンセル
+      await _notificationService?.cancelTaskNotification(index);
+    }
   }
 
   /// インデックス指定でタスクを削除（履歴も削除）
   Future<void> deleteTaskAt(int index) async {
     // 関連する履歴も削除
     await _historyRepo.deleteAllForTask(index);
+
+    // 通知もキャンセル
+    await _notificationService?.cancelTaskNotification(index);
+
     await _box.deleteAt(index);
   }
 

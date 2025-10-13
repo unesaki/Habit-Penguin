@@ -8,6 +8,7 @@ import 'models/habit_task.dart';
 import 'models/task_completion_history.dart';
 import 'providers/providers.dart';
 import 'services/migration_service.dart';
+import 'services/notification_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,6 +21,10 @@ Future<void> main() async {
 
   // データマイグレーション実行
   await MigrationService.migrate(appStateBox);
+
+  // 通知権限をリクエスト
+  final notificationService = NotificationService();
+  await notificationService.requestPermissions();
 
   runApp(const ProviderScope(child: HabitPenguinApp()));
 }
@@ -712,6 +717,7 @@ class _TaskFormPageState extends ConsumerState<TaskFormPage> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _nameController;
   late bool _reminderEnabled;
+  TimeOfDay? _reminderTime;
   late int _selectedIconCodePoint;
   late TaskDifficulty _selectedDifficulty;
   DateTime? _scheduledDate;
@@ -725,6 +731,7 @@ class _TaskFormPageState extends ConsumerState<TaskFormPage> {
     final initialTask = widget.initialTask;
     _nameController = TextEditingController(text: initialTask?.name ?? '');
     _reminderEnabled = initialTask?.reminderEnabled ?? false;
+    _reminderTime = initialTask?.reminderTime;
     _selectedIconCodePoint =
         initialTask?.iconCodePoint ?? _iconOptions.first.codePoint;
     _selectedDifficulty = initialTask?.difficulty ?? TaskDifficulty.normal;
@@ -926,17 +933,40 @@ class _TaskFormPageState extends ConsumerState<TaskFormPage> {
                 const SizedBox(height: 12),
                 _FormSection(
                   title: 'リマインダー',
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Text('通知を受け取る', style: theme.textTheme.bodyLarge),
-                      Switch(
-                        value: _reminderEnabled,
-                        onChanged: (value) {
-                          setState(() {
-                            _reminderEnabled = value;
-                          });
-                        },
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('通知を受け取る', style: theme.textTheme.bodyLarge),
+                          Switch(
+                            value: _reminderEnabled,
+                            onChanged: (value) {
+                              setState(() {
+                                _reminderEnabled = value;
+                                if (value && _reminderTime == null) {
+                                  _reminderTime = const TimeOfDay(hour: 9, minute: 0);
+                                }
+                              });
+                            },
+                          ),
+                        ],
+                      ),
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 200),
+                        child: !_reminderEnabled
+                            ? const SizedBox.shrink()
+                            : Padding(
+                                padding: const EdgeInsets.only(top: 12),
+                                child: _DateActionRow(
+                                  label: '通知時刻',
+                                  value: _reminderTime != null
+                                      ? _formatTimeLabel(_reminderTime!)
+                                      : '未選択',
+                                  onTap: _pickReminderTime,
+                                ),
+                              ),
                       ),
                     ],
                   ),
@@ -1004,6 +1034,7 @@ class _TaskFormPageState extends ConsumerState<TaskFormPage> {
         scheduledDate: scheduledDate,
         repeatStart: repeatStart,
         repeatEnd: repeatEnd,
+        reminderTime: _reminderTime,
       );
       await repository.addTask(task);
     } else {
@@ -1016,7 +1047,8 @@ class _TaskFormPageState extends ConsumerState<TaskFormPage> {
           ..difficulty = _selectedDifficulty
           ..scheduledDate = scheduledDate
           ..repeatStart = repeatStart
-          ..repeatEnd = repeatEnd;
+          ..repeatEnd = repeatEnd
+          ..reminderTime = _reminderTime;
         await repository.updateTask(existing);
       }
     }
@@ -1072,6 +1104,19 @@ class _TaskFormPageState extends ConsumerState<TaskFormPage> {
     if (picked != null) {
       setState(() {
         _repeatEnd = _asDateOnly(picked);
+      });
+    }
+  }
+
+  Future<void> _pickReminderTime() async {
+    final initial = _reminderTime ?? const TimeOfDay(hour: 9, minute: 0);
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: initial,
+    );
+    if (picked != null) {
+      setState(() {
+        _reminderTime = picked;
       });
     }
   }
@@ -1426,6 +1471,12 @@ String _formatDateLabel(DateTime date) {
   final month = date.month.toString().padLeft(2, '0');
   final day = date.day.toString().padLeft(2, '0');
   return '${date.year}/$month/$day';
+}
+
+String _formatTimeLabel(TimeOfDay time) {
+  final hour = time.hour.toString().padLeft(2, '0');
+  final minute = time.minute.toString().padLeft(2, '0');
+  return '$hour:$minute';
 }
 
 const List<IconData> _iconOptions = [

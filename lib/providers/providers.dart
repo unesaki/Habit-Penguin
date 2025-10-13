@@ -5,6 +5,7 @@ import '../models/habit_task.dart';
 import '../models/task_completion_history.dart';
 import '../repositories/completion_history_repository.dart';
 import '../repositories/task_repository.dart';
+import '../services/notification_service.dart';
 import '../services/xp_service.dart';
 
 /// CompletionHistoryRepositoryのプロバイダー
@@ -19,7 +20,8 @@ final completionHistoryRepositoryProvider =
 final taskRepositoryProvider = Provider<TaskRepository>((ref) {
   final box = Hive.box<HabitTask>('tasks');
   final historyRepo = ref.watch(completionHistoryRepositoryProvider);
-  return TaskRepository(box, historyRepo);
+  final notificationService = ref.watch(notificationServiceProvider);
+  return TaskRepository(box, historyRepo, notificationService);
 });
 
 /// XpServiceのプロバイダー
@@ -27,6 +29,12 @@ final taskRepositoryProvider = Provider<TaskRepository>((ref) {
 final xpServiceProvider = Provider<XpService>((ref) {
   final box = Hive.box('appState');
   return XpService(box);
+});
+
+/// NotificationServiceのプロバイダー
+/// シングルトンとしてサービスを提供
+final notificationServiceProvider = Provider<NotificationService>((ref) {
+  return NotificationService();
 });
 
 /// 現在のXPを監視するプロバイダー
