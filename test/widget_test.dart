@@ -43,13 +43,13 @@ void main() {
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(const HabitPenguinApp());
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 100));
 
     expect(find.textContaining('Habit Penguin'), findsWidgets);
     expect(find.byType(BottomNavigationBar), findsOneWidget);
 
     await tester.tap(find.text('Tasks'));
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 100));
 
     expect(find.text('今日のタスク'), findsOneWidget);
   });
