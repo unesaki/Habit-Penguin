@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import 'models/habit_task.dart';
+import 'models/task_completion_history.dart';
 import 'providers/providers.dart';
 import 'services/migration_service.dart';
 
@@ -12,7 +13,9 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Hive.initFlutter();
   Hive.registerAdapter(HabitTaskAdapter());
+  Hive.registerAdapter(TaskCompletionHistoryAdapter());
   await Hive.openBox<HabitTask>('tasks');
+  await Hive.openBox<TaskCompletionHistory>('completion_history');
   final appStateBox = await Hive.openBox('appState');
 
   // データマイグレーション実行
@@ -552,6 +555,7 @@ class TasksTab extends ConsumerWidget {
                       padding: const EdgeInsets.only(bottom: 12),
                       child: _TaskListTile(
                         task: entry.value,
+                        taskIndex: entry.key,
                         onTap: () => onEditTask(entry.key, entry.value),
                         onDelete: () => _confirmDelete(context, ref, entry.key),
                         onComplete: () =>
@@ -574,6 +578,7 @@ class TasksTab extends ConsumerWidget {
                       padding: const EdgeInsets.only(bottom: 12),
                       child: _TaskListTile(
                         task: entry.value,
+                        taskIndex: entry.key,
                         onTap: () => onEditTask(entry.key, entry.value),
                         onDelete: () => _confirmDelete(context, ref, entry.key),
                         onComplete: () =>
@@ -663,13 +668,22 @@ Future<void> _completeTaskWithXp(
   final xpService = ref.read(xpServiceProvider);
 
   final task = repository.getTaskAt(index);
-  if (task == null || task.isCompleted) {
+  if (task == null) {
+    return;
+  }
+
+  // 今日既に完了済みかチェック
+  if (repository.isCompletedToday(index)) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('本日は既に完了しています')),
+    );
     return;
   }
 
   final gainedXp = xpService.calculateXpForDifficulty(task.difficulty);
 
-  // タスクを完了にする
+  // タスクを完了にする（履歴に記録）
   await repository.completeTask(index, xpGained: gainedXp);
 
   // XPを追加
@@ -1142,9 +1156,10 @@ class _DateActionRow extends StatelessWidget {
   }
 }
 
-class _TaskListTile extends StatelessWidget {
+class _TaskListTile extends ConsumerWidget {
   const _TaskListTile({
     required this.task,
+    required this.taskIndex,
     required this.onTap,
     required this.onDelete,
     required this.onComplete,
@@ -1152,14 +1167,18 @@ class _TaskListTile extends StatelessWidget {
   });
 
   final HabitTask task;
+  final int taskIndex;
   final VoidCallback onTap;
   final VoidCallback onDelete;
   final VoidCallback onComplete;
   final bool isActive;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final historyRepo = ref.watch(completionHistoryRepositoryProvider);
+    final streak = historyRepo.calculateStreak(taskIndex);
+
     final decoration = BoxDecoration(
       color: theme.colorScheme.surfaceContainerHighest,
       borderRadius: BorderRadius.circular(16),
@@ -1199,15 +1218,46 @@ class _TaskListTile extends StatelessWidget {
                         color: theme.colorScheme.outline,
                       ),
                     ),
-                    if (task.reminderEnabled)
+                    if (task.reminderEnabled || streak > 0)
                       Padding(
                         padding: const EdgeInsets.only(top: 4),
-                        child: Text(
-                          'Reminder ON',
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: theme.colorScheme.primary,
-                            fontWeight: FontWeight.w600,
-                          ),
+                        child: Row(
+                          children: [
+                            if (task.reminderEnabled)
+                              Text(
+                                'Reminder ON',
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: theme.colorScheme.primary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            if (task.reminderEnabled && streak > 0)
+                              Text(
+                                ' • ',
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: theme.colorScheme.outline,
+                                ),
+                              ),
+                            if (streak > 0)
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.local_fire_department,
+                                    size: 14,
+                                    color: Colors.orange,
+                                  ),
+                                  const SizedBox(width: 2),
+                                  Text(
+                                    '$streak日連続',
+                                    style: theme.textTheme.labelSmall?.copyWith(
+                                      color: Colors.orange,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                          ],
                         ),
                       ),
                   ],
@@ -1242,7 +1292,8 @@ class CompletedTasksPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final currentXpAsync = ref.watch(currentXpProvider);
-    final completedTasksAsync = ref.watch(completedTasksProvider);
+    final completedTasksAsync = ref.watch(completedTasksWithHistoryProvider);
+    final taskRepository = ref.watch(taskRepositoryProvider);
 
     return currentXpAsync.when(
       data: (currentXp) {
@@ -1261,7 +1312,6 @@ class CompletedTasksPage extends ConsumerWidget {
           ),
           body: completedTasksAsync.when(
             data: (completed) {
-
               if (completed.isEmpty) {
                 return Center(
                   child: Text(
@@ -1276,18 +1326,19 @@ class CompletedTasksPage extends ConsumerWidget {
                 itemCount: completed.length,
                 separatorBuilder: (_, __) => const SizedBox(height: 12),
                 itemBuilder: (context, index) {
-                  final task = completed[index];
-                  final xpService = ref.read(xpServiceProvider);
-                  final xp = task.completionXp ??
-                      xpService.calculateXpForDifficulty(task.difficulty);
-                  final completedAt = task.completedAt;
+                  final entry = completed[index];
+                  final task = taskRepository.getTaskAt(entry.key);
+                  final history = entry.value;
+
+                  if (task == null) {
+                    return const SizedBox.shrink();
+                  }
+
                   final parts = <String>[
                     _difficultyLabel(task.difficulty),
-                    '獲得XP: $xp',
+                    '獲得XP: ${history.earnedXp}',
+                    '完了日: ${_formatDateLabel(history.completedAt)}',
                   ];
-                  if (completedAt != null) {
-                    parts.add('完了日: ${_formatDateLabel(completedAt)}');
-                  }
 
                   return ListTile(
                     leading: CircleAvatar(

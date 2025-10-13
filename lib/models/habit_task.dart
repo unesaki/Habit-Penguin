@@ -11,9 +11,9 @@ class HabitTask extends HiveObject {
     this.scheduledDate,
     this.repeatStart,
     this.repeatEnd,
-    this.isCompleted = false,
-    this.completedAt,
-    this.completionXp,
+    @Deprecated('Use TaskCompletionHistory instead') this.isCompleted = false,
+    @Deprecated('Use TaskCompletionHistory instead') this.completedAt,
+    @Deprecated('Use TaskCompletionHistory instead') this.completionXp,
   });
 
   String name;
@@ -23,19 +23,29 @@ class HabitTask extends HiveObject {
   DateTime? scheduledDate;
   DateTime? repeatStart;
   DateTime? repeatEnd;
+
+  /// 非推奨: 履歴ベースの完了管理に移行しました
+  /// マイグレーション用に残しています
+  @Deprecated('Use CompletionHistoryRepository.isTaskCompletedOnDate instead')
   bool isCompleted;
+
+  /// 非推奨: 履歴ベースの完了管理に移行しました
+  @Deprecated('Use TaskCompletionHistory instead')
   DateTime? completedAt;
+
+  /// 非推奨: 履歴ベースの完了管理に移行しました
+  @Deprecated('Use TaskCompletionHistory instead')
   int? completionXp;
 
   IconData get iconData => IconData(iconCodePoint, fontFamily: 'MaterialIcons');
 
   bool get isRepeating => repeatStart != null && repeatEnd != null;
 
+  /// 指定日にアクティブかどうか（スケジュール範囲内かどうか）
+  /// 注: 完了状態のチェックは含まれません（履歴で管理）
   bool isActiveOn(DateTime date) {
-    if (isCompleted) {
-      return false;
-    }
     final dateOnly = DateTime(date.year, date.month, date.day);
+
     if (isRepeating && repeatStart != null && repeatEnd != null) {
       final start = DateTime(
         repeatStart!.year,
@@ -45,9 +55,11 @@ class HabitTask extends HiveObject {
       final end = DateTime(repeatEnd!.year, repeatEnd!.month, repeatEnd!.day);
       return !dateOnly.isBefore(start) && !dateOnly.isAfter(end);
     }
+
     if (scheduledDate == null) {
-      return true;
+      return true; // スケジュールなし = いつでもアクティブ
     }
+
     final scheduled = DateTime(
       scheduledDate!.year,
       scheduledDate!.month,

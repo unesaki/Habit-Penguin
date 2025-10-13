@@ -2,14 +2,24 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive/hive.dart';
 
 import '../models/habit_task.dart';
+import '../models/task_completion_history.dart';
+import '../repositories/completion_history_repository.dart';
 import '../repositories/task_repository.dart';
 import '../services/xp_service.dart';
+
+/// CompletionHistoryRepositoryのプロバイダー
+final completionHistoryRepositoryProvider =
+    Provider<CompletionHistoryRepository>((ref) {
+  final box = Hive.box<TaskCompletionHistory>('completion_history');
+  return CompletionHistoryRepository(box);
+});
 
 /// TaskRepositoryのプロバイダー
 /// Hiveのtasksボックスからリポジトリを生成
 final taskRepositoryProvider = Provider<TaskRepository>((ref) {
   final box = Hive.box<HabitTask>('tasks');
-  return TaskRepository(box);
+  final historyRepo = ref.watch(completionHistoryRepositoryProvider);
+  return TaskRepository(box, historyRepo);
 });
 
 /// XpServiceのプロバイダー
@@ -48,22 +58,37 @@ final openTasksProvider =
       .distinct((prev, next) => prev.length == next.length);
 });
 
-/// 完了済みタスクを取得するプロバイダー
-final completedTasksProvider = StreamProvider<List<HabitTask>>((ref) {
+/// 完了済みタスクを履歴とともに取得するプロバイダー
+final completedTasksWithHistoryProvider =
+    StreamProvider<List<MapEntry<int, TaskCompletionHistory>>>((ref) {
   final repository = ref.watch(taskRepositoryProvider);
 
   return Stream.periodic(const Duration(milliseconds: 100))
-      .asyncMap((_) => repository.getCompletedTasks())
+      .asyncMap((_) => repository.getCompletedTasksWithHistory())
       .distinct((prev, next) => prev.length == next.length);
 });
 
-/// 今日アクティブなタスクを取得するプロバイダー
+/// 今日アクティブなタスクを取得するプロバイダー（完了済み除外）
 final todayActiveTasksProvider =
     StreamProvider<List<MapEntry<int, HabitTask>>>((ref) {
   final repository = ref.watch(taskRepositoryProvider);
   final today = DateTime.now();
 
   return Stream.periodic(const Duration(milliseconds: 100))
-      .asyncMap((_) => repository.getActiveTasksOn(today))
+      .asyncMap((_) => repository.getActiveTasksOn(today, excludeCompleted: true))
       .distinct((prev, next) => prev.length == next.length);
+});
+
+/// 特定のタスクのストリークを取得するプロバイダー
+final taskStreakProvider =
+    Provider.family<int, int>((ref, taskKey) {
+  final historyRepo = ref.watch(completionHistoryRepositoryProvider);
+  return historyRepo.calculateStreak(taskKey);
+});
+
+/// 特定のタスクの最大ストリークを取得するプロバイダー
+final taskMaxStreakProvider =
+    Provider.family<int, int>((ref, taskKey) {
+  final historyRepo = ref.watch(completionHistoryRepositoryProvider);
+  return historyRepo.calculateMaxStreak(taskKey);
 });
