@@ -1,17 +1,24 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import 'models/habit_task.dart';
+import 'providers/providers.dart';
+import 'services/migration_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Hive.initFlutter();
   Hive.registerAdapter(HabitTaskAdapter());
   await Hive.openBox<HabitTask>('tasks');
-  await Hive.openBox('appState');
-  runApp(const HabitPenguinApp());
+  final appStateBox = await Hive.openBox('appState');
+
+  // データマイグレーション実行
+  await MigrationService.migrate(appStateBox);
+
+  runApp(const ProviderScope(child: HabitPenguinApp()));
 }
 
 class HabitPenguinApp extends StatelessWidget {
@@ -104,38 +111,19 @@ class _HabitHomeShellState extends State<HabitHomeShell> {
   }
 }
 
-class HomeTab extends StatefulWidget {
+class HomeTab extends ConsumerWidget {
   const HomeTab({super.key});
 
   @override
-  State<HomeTab> createState() => _HomeTabState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final openTasksAsync = ref.watch(openTasksProvider);
+    final todayActiveTasksAsync = ref.watch(todayActiveTasksProvider);
 
-class _HomeTabState extends State<HomeTab> {
-  late final Box<HabitTask> _tasksBox;
-
-  @override
-  void initState() {
-    super.initState();
-    _tasksBox = Hive.box<HabitTask>('tasks');
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return ValueListenableBuilder<Box<HabitTask>>(
-      valueListenable: _tasksBox.listenable(),
-      builder: (context, tasksBox, _) {
-        final today = DateTime.now();
-        final openEntries = <MapEntry<int, HabitTask>>[];
-        for (var i = 0; i < tasksBox.length; i++) {
-          final task = tasksBox.getAt(i);
-          if (task == null || task.isCompleted) continue;
-          openEntries.add(MapEntry(i, task));
-        }
-        final todaysEntries = openEntries
-            .where((entry) => entry.value.isActiveOn(today))
-            .take(3)
-            .toList(growable: false);
+    return openTasksAsync.when(
+      data: (openEntries) {
+        return todayActiveTasksAsync.when(
+          data: (todaysEntries) {
+            final displayedTasks = todaysEntries.take(3).toList(growable: false);
         return DecoratedBox(
           decoration: BoxDecoration(
             gradient: LinearGradient(
@@ -170,24 +158,25 @@ class _HomeTabState extends State<HomeTab> {
                               ?.copyWith(fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 16),
-                        if (todaysEntries.isEmpty) ...[
+                        if (displayedTasks.isEmpty) ...[
                           const _CreateTaskCallout(),
                         ] else ...[
-                          for (var i = 0; i < todaysEntries.length; i++)
+                          for (var i = 0; i < displayedTasks.length; i++)
                             Padding(
                               padding: EdgeInsets.only(
-                                bottom: i == todaysEntries.length - 1 ? 0 : 8,
+                                bottom: i == displayedTasks.length - 1 ? 0 : 8,
                               ),
                               child: _TodayTaskCard(
-                                task: todaysEntries[i].value,
-                                index: todaysEntries[i].key,
+                                task: displayedTasks[i].value,
+                                index: displayedTasks[i].key,
                                 onComplete: () => _completeTaskWithXp(
                                   context,
-                                  todaysEntries[i].key,
+                                  ref,
+                                  displayedTasks[i].key,
                                 ),
                               ),
                             ),
-                          if (openEntries.length > todaysEntries.length)
+                          if (openEntries.length > displayedTasks.length)
                             Padding(
                               padding: const EdgeInsets.only(top: 16),
                               child: Text(
@@ -209,7 +198,13 @@ class _HomeTabState extends State<HomeTab> {
             ),
           ),
         );
+          },
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, st) => Center(child: Text('エラー: $e')),
+        );
       },
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, st) => Center(child: Text('エラー: $e')),
     );
   }
 }
@@ -501,44 +496,28 @@ class _CreateTaskCallout extends StatelessWidget {
   }
 }
 
-class TasksTab extends StatelessWidget {
+class TasksTab extends ConsumerWidget {
   const TasksTab({super.key, required this.onEditTask});
 
   final void Function(int index, HabitTask task) onEditTask;
 
   @override
-  Widget build(BuildContext context) {
-    final tasksBox = Hive.box<HabitTask>('tasks');
-    final appStateBox = Hive.box('appState');
+  Widget build(BuildContext context, WidgetRef ref) {
+    final currentXpAsync = ref.watch(currentXpProvider);
+    final openTasksAsync = ref.watch(openTasksProvider);
+    final todayActiveTasksAsync = ref.watch(todayActiveTasksProvider);
 
-    return ValueListenableBuilder<Box>(
-      valueListenable: appStateBox.listenable(),
-      builder: (context, appState, _) {
-        final currentXp = (appState.get('xp') as int?) ?? 0;
-        return ValueListenableBuilder<Box<HabitTask>>(
-          valueListenable: tasksBox.listenable(),
-          builder: (context, box, __) {
-            final today = DateTime.now();
-            final activeEntries = <MapEntry<int, HabitTask>>[];
-            final openEntries = <MapEntry<int, HabitTask>>[];
-
-            for (var i = 0; i < box.length; i++) {
-              final task = box.getAt(i);
-              if (task == null) continue;
-              if (task.isCompleted) {
-                continue;
-              }
-              final entry = MapEntry(i, task);
-              openEntries.add(entry);
-              if (task.isActiveOn(today)) {
-                activeEntries.add(entry);
-              }
-            }
-
-            final activeKeys = activeEntries.map((entry) => entry.key).toSet();
-            final backlogEntries = openEntries
-                .where((entry) => !activeKeys.contains(entry.key))
-                .toList();
+    return currentXpAsync.when(
+      data: (currentXp) {
+        return openTasksAsync.when(
+          data: (openEntries) {
+            return todayActiveTasksAsync.when(
+              data: (activeEntries) {
+                final activeKeys =
+                    activeEntries.map((entry) => entry.key).toSet();
+                final backlogEntries = openEntries
+                    .where((entry) => !activeKeys.contains(entry.key))
+                    .toList();
 
             return ListView(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
@@ -574,9 +553,9 @@ class TasksTab extends StatelessWidget {
                       child: _TaskListTile(
                         task: entry.value,
                         onTap: () => onEditTask(entry.key, entry.value),
-                        onDelete: () => _confirmDelete(context, entry.key),
+                        onDelete: () => _confirmDelete(context, ref, entry.key),
                         onComplete: () =>
-                            _completeTaskWithXp(context, entry.key),
+                            _completeTaskWithXp(context, ref, entry.key),
                         isActive: true,
                       ),
                     ),
@@ -596,22 +575,34 @@ class TasksTab extends StatelessWidget {
                       child: _TaskListTile(
                         task: entry.value,
                         onTap: () => onEditTask(entry.key, entry.value),
-                        onDelete: () => _confirmDelete(context, entry.key),
+                        onDelete: () => _confirmDelete(context, ref, entry.key),
                         onComplete: () =>
-                            _completeTaskWithXp(context, entry.key),
-                        isActive: entry.value.isActiveOn(today),
+                            _completeTaskWithXp(context, ref, entry.key),
+                        isActive: entry.value.isActiveOn(DateTime.now()),
                       ),
                     ),
                   ),
               ],
             );
+              },
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (e, st) => Center(child: Text('エラー: $e')),
+            );
           },
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, st) => Center(child: Text('エラー: $e')),
         );
       },
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, st) => Center(child: Text('エラー: $e')),
     );
   }
 
-  Future<void> _confirmDelete(BuildContext context, int index) async {
+  Future<void> _confirmDelete(
+    BuildContext context,
+    WidgetRef ref,
+    int index,
+  ) async {
     final shouldDelete =
         await showDialog<bool>(
           context: context,
@@ -636,8 +627,8 @@ class TasksTab extends StatelessWidget {
       return;
     }
 
-    final box = Hive.box<HabitTask>('tasks');
-    await box.deleteAt(index);
+    final repository = ref.read(taskRepositoryProvider);
+    await repository.deleteTaskAt(index);
     if (!context.mounted) {
       return;
     }
@@ -653,34 +644,36 @@ class TasksTab extends StatelessWidget {
   }
 }
 
-class TaskFormPage extends StatefulWidget {
+class TaskFormPage extends ConsumerStatefulWidget {
   const TaskFormPage({super.key, this.initialTask, this.taskIndex});
 
   final HabitTask? initialTask;
   final int? taskIndex;
 
   @override
-  State<TaskFormPage> createState() => _TaskFormPageState();
+  ConsumerState<TaskFormPage> createState() => _TaskFormPageState();
 }
 
-Future<void> _completeTaskWithXp(BuildContext context, int index) async {
-  final tasksBox = Hive.box<HabitTask>('tasks');
-  final task = tasksBox.getAt(index);
+Future<void> _completeTaskWithXp(
+  BuildContext context,
+  WidgetRef ref,
+  int index,
+) async {
+  final repository = ref.read(taskRepositoryProvider);
+  final xpService = ref.read(xpServiceProvider);
+
+  final task = repository.getTaskAt(index);
   if (task == null || task.isCompleted) {
     return;
   }
 
-  final gainedXp = _xpForDifficulty(task.difficulty);
+  final gainedXp = xpService.calculateXpForDifficulty(task.difficulty);
 
-  task
-    ..isCompleted = true
-    ..completedAt = DateTime.now()
-    ..completionXp = gainedXp;
-  await task.save();
+  // タスクを完了にする
+  await repository.completeTask(index, xpGained: gainedXp);
 
-  final appStateBox = Hive.box('appState');
-  final currentXp = (appStateBox.get('xp') as int?) ?? 0;
-  await appStateBox.put('xp', currentXp + gainedXp);
+  // XPを追加
+  await xpService.addXp(gainedXp);
 
   if (!context.mounted) {
     return;
@@ -701,7 +694,7 @@ Future<void> _completeTaskWithXp(BuildContext context, int index) async {
   );
 }
 
-class _TaskFormPageState extends State<TaskFormPage> {
+class _TaskFormPageState extends ConsumerState<TaskFormPage> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _nameController;
   late bool _reminderEnabled;
@@ -944,7 +937,7 @@ class _TaskFormPageState extends State<TaskFormPage> {
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           child: FilledButton.icon(
-            onPressed: _saveTask,
+            onPressed: () => _saveTask(ref),
             icon: const Icon(Icons.save_outlined),
             label: Text(isEditing ? '変更を保存' : 'タスクを作成'),
           ),
@@ -953,7 +946,7 @@ class _TaskFormPageState extends State<TaskFormPage> {
     );
   }
 
-  Future<void> _saveTask() async {
+  Future<void> _saveTask(WidgetRef ref) async {
     if (!(_formKey.currentState?.validate() ?? false)) {
       return;
     }
@@ -986,7 +979,8 @@ class _TaskFormPageState extends State<TaskFormPage> {
       scheduledDate = _asDateOnly(_scheduledDate!);
     }
 
-    final box = Hive.box<HabitTask>('tasks');
+    final repository = ref.read(taskRepositoryProvider);
+
     if (widget.taskIndex == null) {
       final task = HabitTask(
         name: _nameController.text.trim(),
@@ -997,7 +991,7 @@ class _TaskFormPageState extends State<TaskFormPage> {
         repeatStart: repeatStart,
         repeatEnd: repeatEnd,
       );
-      await box.add(task);
+      await repository.addTask(task);
     } else {
       final existing = widget.initialTask;
       if (existing != null) {
@@ -1009,7 +1003,7 @@ class _TaskFormPageState extends State<TaskFormPage> {
           ..scheduledDate = scheduledDate
           ..repeatStart = repeatStart
           ..repeatEnd = repeatEnd;
-        await existing.save();
+        await repository.updateTask(existing);
       }
     }
 
@@ -1242,18 +1236,16 @@ class _TaskListTile extends StatelessWidget {
   }
 }
 
-class CompletedTasksPage extends StatelessWidget {
+class CompletedTasksPage extends ConsumerWidget {
   const CompletedTasksPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final tasksBox = Hive.box<HabitTask>('tasks');
-    final appStateBox = Hive.box('appState');
+  Widget build(BuildContext context, WidgetRef ref) {
+    final currentXpAsync = ref.watch(currentXpProvider);
+    final completedTasksAsync = ref.watch(completedTasksProvider);
 
-    return ValueListenableBuilder<Box>(
-      valueListenable: appStateBox.listenable(),
-      builder: (context, appState, _) {
-        final currentXp = (appState.get('xp') as int?) ?? 0;
+    return currentXpAsync.when(
+      data: (currentXp) {
         return Scaffold(
           appBar: AppBar(
             title: const Text('完了済みタスク'),
@@ -1267,22 +1259,8 @@ class CompletedTasksPage extends StatelessWidget {
               ),
             ],
           ),
-          body: ValueListenableBuilder<Box<HabitTask>>(
-            valueListenable: tasksBox.listenable(),
-            builder: (context, box, __) {
-              final completed = <HabitTask>[];
-              for (var i = 0; i < box.length; i++) {
-                final task = box.getAt(i);
-                if (task == null || !task.isCompleted) continue;
-                completed.add(task);
-              }
-              completed.sort((a, b) {
-                final aDate =
-                    a.completedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
-                final bDate =
-                    b.completedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
-                return bDate.compareTo(aDate);
-              });
+          body: completedTasksAsync.when(
+            data: (completed) {
 
               if (completed.isEmpty) {
                 return Center(
@@ -1299,8 +1277,9 @@ class CompletedTasksPage extends StatelessWidget {
                 separatorBuilder: (_, __) => const SizedBox(height: 12),
                 itemBuilder: (context, index) {
                   final task = completed[index];
-                  final xp =
-                      task.completionXp ?? _xpForDifficulty(task.difficulty);
+                  final xpService = ref.read(xpServiceProvider);
+                  final xp = task.completionXp ??
+                      xpService.calculateXpForDifficulty(task.difficulty);
                   final completedAt = task.completedAt;
                   final parts = <String>[
                     _difficultyLabel(task.difficulty),
@@ -1326,9 +1305,17 @@ class CompletedTasksPage extends StatelessWidget {
                 },
               );
             },
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (e, st) => Center(child: Text('エラー: $e')),
           ),
         );
       },
+      loading: () => const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      ),
+      error: (e, st) => Scaffold(
+        body: Center(child: Text('エラー: $e')),
+      ),
     );
   }
 }
@@ -1388,17 +1375,6 @@ String _formatDateLabel(DateTime date) {
   final month = date.month.toString().padLeft(2, '0');
   final day = date.day.toString().padLeft(2, '0');
   return '${date.year}/$month/$day';
-}
-
-int _xpForDifficulty(TaskDifficulty difficulty) {
-  switch (difficulty) {
-    case TaskDifficulty.easy:
-      return 5;
-    case TaskDifficulty.normal:
-      return 30;
-    case TaskDifficulty.hard:
-      return 50;
-  }
 }
 
 const List<IconData> _iconOptions = [

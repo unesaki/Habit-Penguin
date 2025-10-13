@@ -1,39 +1,366 @@
-# Habit Penguin Product Readiness Plan
+# Habit Penguin プロダクトリリース準備計画
 
-The following checklist outlines the key work remaining to turn the current prototype into a production-ready habit tracking app.
+このドキュメントは、現在のプロトタイプから本番環境対応の習慣トラッキングアプリにするための作業項目を整理したものです。
 
-## 1. Core user experience
-- Replace the static Home tab background with a real dashboard that surfaces today’s tasks, progress, and streaks. Right now `HomeTab` only renders background and decorative images, so there is no actionable content for the user.
-- Surface the task list and completion controls on the home screen. Widgets such as `_TaskCard` and `_SpeechBubble` exist but are unused, indicating planned interactions that still need to be wired up.
-- Persist daily completion state, streak calculations, and history views so users can review past performance, not just CRUD tasks.
-- Add onboarding, empty-state education, and contextual helper copy so new users understand how to use the product.
+## 実装状況の概要
 
-## 2. Task management depth
-- Expand the task model to support schedules (e.g., weekly cadence, time-of-day) instead of the current hard-coded "Daily" label in the form.
-- Implement real reminder scheduling (local notifications, optional calendar integration) tied to the `reminderEnabled` toggle, and expose snooze/skip controls.
-- Support bulk actions (reordering, archiving, duplication) and guard against accidental destructive operations with undo flows beyond the current simple snackbar.
+### ✅ 実装済み機能
+- 基本的なタスクCRUD機能（作成・読込・更新・削除）
+- タスク難易度設定（Easy/Normal/Hard）と経験値システム
+- 単発タスクと繰り返しタスクのスケジュール管理
+- Homeタブでの今日のタスク表示（最大3件）
+- タスク完了時のXP獲得とダイアログ表示
+- 完了済みタスクの履歴表示
+- ペンギンのアニメーション表示
+- Hiveによるローカルデータ永続化
+- アイコンカスタマイズ機能
 
-## 3. Data architecture & persistence
-- Extract Hive access into repositories/services instead of calling the database directly from widgets so that business logic is testable and platform-agnostic.
-- Define data migration and backup strategies (e.g., schema versioning, cloud sync) to protect user data across updates and devices.
-- Introduce app state management (such as Riverpod, Bloc, or ValueNotifier-based controllers) to coordinate between screens and background services.
+### 🚧 未実装・改善が必要な機能
+以下のセクションで詳細を説明します。
 
-## 4. Visual polish & branding
-- Establish a design system (typography scale, color tokens, spacing) and implement consistent theming. Extend support for dark mode, dynamic color, and larger fonts.
-- Create production-quality iconography, splash screens, and promotional assets. Align imagery and mascot animations with the Habit Penguin brand identity.
-- Audit responsiveness for tablets and desktop platforms; refine layout breakpoints and hit targets to meet platform guidelines.
+---
 
-## 5. Internationalization & accessibility
-- Externalize hard-coded Japanese strings and provide English (and additional) localizations, including right-to-left layout support where applicable.
-- Implement accessibility best practices: semantic labels for images, proper contrast ratios, focus order, and screen reader hints for custom controls.
-- Add configurable units (e.g., date/time formats) and regional preferences.
+## 1. コア機能の強化
 
-## 6. Quality, analytics & compliance
-- Replace the scaffolded widget test with meaningful unit, widget, and integration coverage that exercises task creation, editing, persistence, and reminder flows.
-- Automate CI/CD pipelines (static analysis, tests, build signing) and set up release channels with crash reporting (e.g., Sentry, Firebase Crashlytics) and analytics instrumentation.
-- Document privacy policy, data retention, and GDPR/CCPA compliance; add in-app settings for data export/delete requests.
+### 1.1 データ永続化とビジネスロジックの改善
+**優先度: 高**
 
-## 7. Launch readiness
-- Prepare app store metadata, localized descriptions, pricing, and screenshots. Implement in-app review prompts and feedback channels.
-- Monitor performance (time-to-first-frame, frame stability) and address platform-specific issues (Android background execution limits, iOS notification permissions).
-- Set up post-launch support workflows: customer support FAQs, contact options, and feature roadmap prioritization.
+**現状の課題:**
+- WidgetからHiveへの直接アクセスが多く、ビジネスロジックがUI層に混在
+- データ移行戦略が未定義
+- アプリ更新時のスキーマ変更に対応できない
+
+**対応内容:**
+- [ ] Repository/Serviceパターンの導入
+  - `TaskRepository`クラスでHiveアクセスをカプセル化
+  - `XpService`クラスで経験値管理ロジックを集約
+  - ウィジェットからビジネスロジックを分離
+- [ ] データマイグレーション機能の実装
+  - スキーマバージョン管理の導入
+  - 過去バージョンからの移行パスを確保
+- [ ] 状態管理の導入
+  - Riverpod、Bloc、またはValueNotifier-basedコントローラーの選択
+  - 画面間のデータ同期とバックグラウンド処理の調整
+
+### 1.2 タスク完了状態と履歴管理の見直し
+**優先度: 高**
+
+**現状の課題:**
+- タスクを完了すると`isCompleted = true`となり、二度と表示されない
+- 繰り返しタスクでも1回完了したら終わり
+- 日々の達成履歴やストリーク（連続達成日数）が記録されない
+
+**対応内容:**
+- [ ] 完了履歴の別モデル化
+  - `TaskCompletionHistory`モデルの作成（日付ごとの完了記録）
+  - タスク自体は`isCompleted`を持たず、履歴から完了状態を判定
+- [ ] 繰り返しタスクの日次完了機能
+  - 今日のタスクとして毎日表示される
+  - 毎日完了できる仕組み
+- [ ] ストリーク計算機能
+  - 連続達成日数の自動計算
+  - ストリークの可視化（HomeタブやTasksタブ）
+- [ ] 進捗ビューの追加
+  - 週次・月次の達成率グラフ
+  - カレンダービューでの完了日の可視化
+
+### 1.3 リマインダー機能の実装
+**優先度: 中**
+
+**現状:**
+- `reminderEnabled`トグルは存在するが、実際の通知機能は未実装
+
+**対応内容:**
+- [ ] ローカル通知の実装
+  - `flutter_local_notifications`パッケージの導入
+  - 時刻指定機能の追加
+  - 通知タップ時のアプリ起動とタスク表示
+- [ ] 通知管理機能
+  - スヌーズ機能
+  - スキップ機能
+  - 通知設定画面の追加
+
+---
+
+## 2. UXの向上
+
+### 2.1 オンボーディングと空状態
+**優先度: 高**
+
+**現状:**
+- 初回起動時の説明がない
+- タスクが0件の場合、簡単な誘導メッセージのみ
+
+**対応内容:**
+- [ ] 初回起動時のオンボーディング画面
+  - アプリの使い方の説明（3〜4画面）
+  - サンプルタスクの自動作成オプション
+- [ ] 各画面の空状態の改善
+  - イラスト付きの説明
+  - 次のアクション（タスク作成）への明確な導線
+- [ ] コンテキストヘルプの追加
+  - 各機能の説明ツールチップ
+  - FAQセクション
+
+### 2.2 操作性の向上
+**優先度: 中**
+
+**対応内容:**
+- [ ] タスクの一括操作
+  - タスクの並び替え（ドラッグ&ドロップ）
+  - 複数選択での削除
+  - タスクの複製機能
+- [ ] Undo/Redo機能
+  - 削除操作のUndo（現在はダイアログのみ）
+  - スナックバーからの取り消し機能の強化
+- [ ] アニメーションの改善
+  - タスク完了時のアニメーション
+  - ペンギンの反応バリエーション
+
+---
+
+## 3. デザインとブランディング
+
+### 3.1 デザインシステムの確立
+**優先度: 中**
+
+**現状:**
+- Material 3を使用しているが、カスタムテーマは最小限
+- 色、タイポグラフィ、スペーシングが統一されていない箇所がある
+
+**対応内容:**
+- [ ] デザイントークンの定義
+  - カラーパレットの体系化
+  - タイポグラフィスケールの定義
+  - スペーシングシステムの標準化
+- [ ] ダークモードの対応
+  - ライト/ダーク両方のカラースキーム定義
+  - 背景画像のダークモード対応
+- [ ] レスポンシブ対応
+  - タブレット・デスクトップレイアウト
+  - 画面サイズに応じたブレークポイント設定
+
+### 3.2 ビジュアルアセットの完成度向上
+**優先度: 低**
+
+**対応内容:**
+- [ ] プロダクション品質のアセット作成
+  - アプリアイコンの最終版
+  - スプラッシュスクリーン
+  - ストア用のスクリーンショットとプロモーション画像
+- [ ] ペンギンキャラクターの拡充
+  - 複数の表情・アニメーション
+  - ストーリー性のある演出
+- [ ] ブランドガイドラインの作成
+
+---
+
+## 4. 国際化とアクセシビリティ
+
+### 4.1 多言語対応
+**優先度: 中**
+
+**現状:**
+- 日本語がハードコーディングされている
+- 英語やその他の言語に対応していない
+
+**対応内容:**
+- [ ] Flutter Intlの導入
+  - すべての文字列をARBファイルに外部化
+  - 日本語・英語の両言語対応
+- [ ] ロケール対応
+  - 日付・時刻フォーマットのロケール対応
+  - RTL（右から左）レイアウトのサポート（アラビア語など）
+
+### 4.2 アクセシビリティ
+**優先度: 中**
+
+**対応内容:**
+- [ ] セマンティクスの追加
+  - 画像への適切なセマンティックラベル
+  - カスタムウィジェットへのセマンティクス情報
+- [ ] コントラスト比の確認
+  - WCAG 2.1 AA基準の遵守
+- [ ] スクリーンリーダー対応
+  - VoiceOver/TalkBackでの動作確認
+  - フォーカス順序の最適化
+- [ ] 動的文字サイズ対応
+  - システムのテキストサイズ設定への対応
+
+---
+
+## 5. 品質保証とモニタリング
+
+### 5.1 テストの充実
+**優先度: 高**
+
+**現状:**
+- デフォルトのwidget_testのみ存在
+- 実際の機能テストが存在しない
+
+**対応内容:**
+- [ ] ユニットテストの追加
+  - ビジネスロジック（XP計算、ストリーク計算など）
+  - データモデルのテスト
+- [ ] ウィジェットテストの追加
+  - 各画面の表示テスト
+  - ユーザー操作のシミュレーション
+- [ ] インテグレーションテストの追加
+  - タスク作成→完了→XP獲得の一連の流れ
+  - データ永続化の確認
+
+### 5.2 CI/CDとモニタリング
+**優先度: 中**
+
+**対応内容:**
+- [ ] CI/CDパイプラインの構築
+  - 自動テスト実行
+  - 静的解析（flutter analyze）
+  - ビルドとコード署名の自動化
+- [ ] クラッシュレポーティングの導入
+  - Sentry、Firebase Crashlytics等の導入
+  - エラーログの収集と分析
+- [ ] アナリティクスの導入
+  - 利用状況の把握（Firebase Analytics等）
+  - 機能別の利用頻度測定
+
+---
+
+## 6. コンプライアンスとセキュリティ
+
+### 6.1 プライバシーとデータ管理
+**優先度: 高（リリース前必須）**
+
+**対応内容:**
+- [ ] プライバシーポリシーの作成
+  - データ収集・利用目的の明記
+  - 第三者提供の有無
+  - ユーザーの権利（削除・エクスポート）
+- [ ] データエクスポート機能
+  - タスクデータのJSON/CSVエクスポート
+- [ ] データ削除機能
+  - アプリ内からの全データ削除
+  - GDPR/CCPA準拠
+- [ ] 利用規約の作成
+
+### 6.2 セキュリティ
+**優先度: 中**
+
+**対応内容:**
+- [ ] データの暗号化
+  - Hiveの暗号化オプション有効化（機密性の高いデータの場合）
+- [ ] 依存パッケージの脆弱性チェック
+  - 定期的な`flutter pub outdated`と更新
+- [ ] セキュリティ監査
+
+---
+
+## 7. ストア申請とリリース
+
+### 7.1 ストア準備
+**優先度: 高（リリース時）**
+
+**対応内容:**
+- [ ] App Store Connect / Google Play Consoleのセットアップ
+- [ ] アプリメタデータの準備
+  - タイトル、説明文（日本語・英語）
+  - キーワード、カテゴリー設定
+  - スクリーンショット（各サイズ）
+  - プロモーションビデオ
+- [ ] 価格設定の決定
+- [ ] レビュー促進機能の実装
+  - `in_app_review`パッケージの導入
+  - 適切なタイミングでのレビュー依頼
+
+### 7.2 リリース後のサポート
+**優先度: 高（リリース後）**
+
+**対応内容:**
+- [ ] ユーザーサポート体制の構築
+  - お問い合わせフォーム/メールアドレス
+  - FAQ・ヘルプセンター
+- [ ] パフォーマンスモニタリング
+  - 起動時間（time-to-first-frame）
+  - フレームレートの安定性
+  - メモリ使用量
+- [ ] プラットフォーム固有の問題対応
+  - Androidのバックグラウンド実行制限
+  - iOSの通知パーミッション
+- [ ] フィードバック収集と機能ロードマップの策定
+
+---
+
+## 8. 追加機能（将来的な拡張）
+
+### 8.1 ペンギンタブの実装
+**優先度: 低**
+
+**現状:**
+- 「ペンギンルームは準備中！」のプレースホルダー表示のみ
+
+**アイデア:**
+- [ ] ペンギンの成長システム
+  - XPによるレベルアップ
+  - 見た目や環境の変化
+- [ ] ミッション機能
+  - 特別な達成条件でボーナスXP
+- [ ] ペンギンとのインタラクション
+  - タップで反応
+  - 達成状況に応じた表情・セリフの変化
+
+### 8.2 ソーシャル機能
+**優先度: 低**
+
+- [ ] クラウド同期
+  - 複数デバイス間でのデータ同期
+- [ ] 友達機能
+  - 他のユーザーとの進捗共有
+  - リーダーボード
+
+### 8.3 データ分析とインサイト
+**優先度: 低**
+
+- [ ] 統計ダッシュボード
+  - 週間・月間達成率
+  - よく達成しているタスクのランキング
+- [ ] パーソナライズされた提案
+  - 達成しやすい時間帯の推奨
+
+---
+
+## 優先度別実装順序の提案
+
+### フェーズ1: MVP改善（リリース前必須）
+1. タスク完了状態と履歴管理の見直し（1.2）
+2. データ永続化とビジネスロジックの改善（1.1）
+3. オンボーディングと空状態（2.1）
+4. テストの充実（5.1）
+5. プライバシーとデータ管理（6.1）
+
+### フェーズ2: 品質向上
+1. リマインダー機能の実装（1.3）
+2. デザインシステムの確立（3.1）
+3. 多言語対応（4.1）
+4. アクセシビリティ（4.2）
+5. CI/CDとモニタリング（5.2）
+
+### フェーズ3: ストアリリース
+1. ストア準備（7.1）
+2. ビジュアルアセットの完成度向上（3.2）
+3. リリース後のサポート体制（7.2）
+
+### フェーズ4: 機能拡張（リリース後）
+1. ペンギンタブの実装（8.1）
+2. 操作性の向上（2.2）
+3. ソーシャル機能（8.2）
+4. データ分析とインサイト（8.3）
+
+---
+
+## まとめ
+
+現在のHabit Penguinは基本的なタスク管理機能が実装されており、プロトタイプとしては十分に動作しています。しかし、本番環境でのリリースには上記の項目について検討・実装が必要です。
+
+特に**フェーズ1**の項目は、ユーザーが継続的にアプリを使用するための根幹部分であり、早急な対応が推奨されます。
+
+このプランは開発状況に応じて柔軟に調整し、段階的に実装を進めることを推奨します。
