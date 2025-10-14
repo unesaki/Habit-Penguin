@@ -1,32 +1,57 @@
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 
 import 'models/habit_task.dart';
 import 'models/task_completion_history.dart';
 import 'providers/providers.dart';
 import 'services/migration_service.dart';
+import 'services/monitoring_service.dart';
 import 'services/notification_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Hive.initFlutter();
-  Hive.registerAdapter(HabitTaskAdapter());
-  Hive.registerAdapter(TaskCompletionHistoryAdapter());
-  await Hive.openBox<HabitTask>('tasks');
-  await Hive.openBox<TaskCompletionHistory>('completion_history');
-  final appStateBox = await Hive.openBox('appState');
 
-  // データマイグレーション実行
-  await MigrationService.migrate(appStateBox);
+  // Sentryの初期化（本番環境用のDSNを設定）
+  // NOTE: デバッグモードではSentryは無効化されます
+  await MonitoringService.instance.initialize(
+    dsn: '', // 本番環境ではSentryプロジェクトのDSNを設定してください
+    enableInDebug: false,
+    environment: kDebugMode ? 'development' : 'production',
+  );
 
-  // 通知権限をリクエスト
-  final notificationService = NotificationService();
-  await notificationService.requestPermissions();
+  // Sentryでアプリ全体のエラーをキャプチャ
+  await SentryFlutter.init(
+    (options) {
+      // DSNが空の場合はSentryを無効化
+      options.dsn = '';
+      options.environment = kDebugMode ? 'development' : 'production';
+      options.tracesSampleRate = kDebugMode ? 0.1 : 1.0;
+      options.debug = kDebugMode;
+      options.enableAutoPerformanceTracing = true;
+    },
+    appRunner: () async {
+      await Hive.initFlutter();
+      Hive.registerAdapter(HabitTaskAdapter());
+      Hive.registerAdapter(TaskCompletionHistoryAdapter());
+      await Hive.openBox<HabitTask>('tasks');
+      await Hive.openBox<TaskCompletionHistory>('completion_history');
+      final appStateBox = await Hive.openBox('appState');
 
-  runApp(const ProviderScope(child: HabitPenguinApp()));
+      // データマイグレーション実行
+      await MigrationService.migrate(appStateBox);
+
+      // 通知権限をリクエスト
+      final notificationService = NotificationService();
+      await notificationService.requestPermissions();
+
+      runApp(const ProviderScope(child: HabitPenguinApp()));
+    },
+  );
 }
 
 class HabitPenguinApp extends StatelessWidget {
@@ -43,6 +68,10 @@ class HabitPenguinApp extends StatelessWidget {
           behavior: SnackBarBehavior.floating,
         ),
       ),
+      // Sentryによるナビゲーショントラッキング
+      navigatorObservers: [
+        SentryNavigatorObserver(),
+      ],
       home: const HabitHomeShell(),
     );
   }
