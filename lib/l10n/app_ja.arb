@@ -1,0 +1,339 @@
+{
+  "@@locale": "ja",
+
+  "appTitle": "Habit Penguin",
+  "@appTitle": {
+    "description": "アプリケーションのタイトル"
+  },
+
+  "tabTasks": "Tasks",
+  "@tabTasks": {
+    "description": "タスクタブのラベル"
+  },
+
+  "tabHome": "Home",
+  "@tabHome": {
+    "description": "ホームタブのラベル"
+  },
+
+  "tabPenguin": "Penguin",
+  "@tabPenguin": {
+    "description": "ペンギンタブのラベル"
+  },
+
+  "welcomeBack": "おかえり！",
+  "@welcomeBack": {
+    "description": "ホーム画面の挨拶"
+  },
+
+  "questDescription": "ペンギンと一緒に今日のクエストをこなそう",
+  "@questDescription": {
+    "description": "ホーム画面の説明"
+  },
+
+  "todayTasks": "今日のタスク",
+  "@todayTasks": {
+    "description": "今日のタスクセクションのタイトル"
+  },
+
+  "createTaskPrompt": "今日のタスクを作成しよう",
+  "@createTaskPrompt": {
+    "description": "タスクがない時の促し"
+  },
+
+  "createTaskInstruction": "Tasksタブ右下の「＋」ボタンから新しいタスクを追加できます。",
+  "@createTaskInstruction": {
+    "description": "タスク作成の手順説明"
+  },
+
+  "seeMoreTasks": "残りのタスクはTasksタブで確認できます。",
+  "@seeMoreTasks": {
+    "description": "追加タスクの案内"
+  },
+
+  "currentXp": "経験値: {xp} XP",
+  "@currentXp": {
+    "description": "現在のXP表示",
+    "placeholders": {
+      "xp": {
+        "type": "int",
+        "example": "150"
+      }
+    }
+  },
+
+  "completedTasksButton": "完了済み",
+  "@completedTasksButton": {
+    "description": "完了済みタスクボタン"
+  },
+
+  "activeTasks": "今日のタスク",
+  "@activeTasks": {
+    "description": "アクティブなタスクセクション"
+  },
+
+  "registeredTasks": "登録中のタスク",
+  "@registeredTasks": {
+    "description": "登録中のタスクセクション"
+  },
+
+  "noActiveTasks": "今日は予定されたタスクがありません。",
+  "@noActiveTasks": {
+    "description": "アクティブタスクなしのメッセージ"
+  },
+
+  "noTasks": "タスクがまだありません。右下の＋で追加しよう。",
+  "@noTasks": {
+    "description": "タスクなしのメッセージ"
+  },
+
+  "addTask": "タスクを追加",
+  "@addTask": {
+    "description": "タスク追加ボタン"
+  },
+
+  "editTask": "タスクを編集",
+  "@editTask": {
+    "description": "タスク編集タイトル"
+  },
+
+  "habitName": "Habit名",
+  "@habitName": {
+    "description": "習慣名フィールドラベル"
+  },
+
+  "habitNameHint": "例: 朝のストレッチ",
+  "@habitNameHint": {
+    "description": "習慣名のヒント"
+  },
+
+  "habitNameRequired": "Habit名を入力してください",
+  "@habitNameRequired": {
+    "description": "習慣名の必須エラー"
+  },
+
+  "icon": "アイコン",
+  "@icon": {
+    "description": "アイコンセクション"
+  },
+
+  "basicInfo": "基本情報",
+  "@basicInfo": {
+    "description": "基本情報セクション"
+  },
+
+  "schedule": "スケジュール",
+  "@schedule": {
+    "description": "スケジュールセクション"
+  },
+
+  "reminder": "リマインダー",
+  "@reminder": {
+    "description": "リマインダーセクション"
+  },
+
+  "date": "日付",
+  "@date": {
+    "description": "日付ラベル"
+  },
+
+  "notSelected": "未選択",
+  "@notSelected": {
+    "description": "未選択状態"
+  },
+
+  "repeatingTask": "繰り返しタスク",
+  "@repeatingTask": {
+    "description": "繰り返しタスクラベル"
+  },
+
+  "startDate": "開始日",
+  "@startDate": {
+    "description": "開始日ラベル"
+  },
+
+  "endDate": "終了日",
+  "@endDate": {
+    "description": "終了日ラベル"
+  },
+
+  "enableNotification": "通知を受け取る",
+  "@enableNotification": {
+    "description": "通知有効化ラベル"
+  },
+
+  "notificationTime": "通知時刻",
+  "@notificationTime": {
+    "description": "通知時刻ラベル"
+  },
+
+  "saveChanges": "変更を保存",
+  "@saveChanges": {
+    "description": "変更保存ボタン"
+  },
+
+  "createTask": "タスクを作成",
+  "@createTask": {
+    "description": "タスク作成ボタン"
+  },
+
+  "selectStartDate": "開始日と終了日を選択してください。",
+  "@selectStartDate": {
+    "description": "日付選択エラー"
+  },
+
+  "endDateAfterStart": "終了日は開始日以降を選択してください。",
+  "@endDateAfterStart": {
+    "description": "日付範囲エラー"
+  },
+
+  "selectDate": "日付を選択してください。",
+  "@selectDate": {
+    "description": "日付未選択エラー"
+  },
+
+  "difficultyEasy": "Easy",
+  "@difficultyEasy": {
+    "description": "難易度：簡単"
+  },
+
+  "difficultyNormal": "Normal",
+  "@difficultyNormal": {
+    "description": "難易度：普通"
+  },
+
+  "difficultyHard": "Hard",
+  "@difficultyHard": {
+    "description": "難易度：難しい"
+  },
+
+  "completeTask": "完了にする",
+  "@completeTask": {
+    "description": "タスク完了ボタン"
+  },
+
+  "deleteTask": "タスクを削除しますか？",
+  "@deleteTask": {
+    "description": "削除確認ダイアログタイトル"
+  },
+
+  "deleteWarning": "この操作は取り消せません。",
+  "@deleteWarning": {
+    "description": "削除警告メッセージ"
+  },
+
+  "cancel": "キャンセル",
+  "@cancel": {
+    "description": "キャンセルボタン"
+  },
+
+  "delete": "削除",
+  "@delete": {
+    "description": "削除ボタン"
+  },
+
+  "taskDeleted": "タスクを削除しました。",
+  "@taskDeleted": {
+    "description": "削除完了メッセージ"
+  },
+
+  "alreadyCompletedToday": "本日は既に完了しています",
+  "@alreadyCompletedToday": {
+    "description": "既に完了済みメッセージ"
+  },
+
+  "questAchieved": "クエスト達成！",
+  "@questAchieved": {
+    "description": "タスク完了ダイアログタイトル"
+  },
+
+  "xpGained": "{xp} XPを獲得しました！",
+  "@xpGained": {
+    "description": "XP獲得メッセージ",
+    "placeholders": {
+      "xp": {
+        "type": "int",
+        "example": "30"
+      }
+    }
+  },
+
+  "ok": "OK",
+  "@ok": {
+    "description": "OKボタン"
+  },
+
+  "completedTasks": "完了済みタスク",
+  "@completedTasks": {
+    "description": "完了済みタスク画面タイトル"
+  },
+
+  "noCompletedTasks": "完了済みのタスクはまだありません。",
+  "@noCompletedTasks": {
+    "description": "完了済みタスクなし"
+  },
+
+  "earnedXp": "獲得XP: {xp}",
+  "@earnedXp": {
+    "description": "獲得XP表示",
+    "placeholders": {
+      "xp": {
+        "type": "int",
+        "example": "50"
+      }
+    }
+  },
+
+  "completionDate": "完了日: {date}",
+  "@completionDate": {
+    "description": "完了日表示",
+    "placeholders": {
+      "date": {
+        "type": "String",
+        "example": "2025/01/15"
+      }
+    }
+  },
+
+  "penguinRoomComingSoon": "ペンギンルームは準備中！",
+  "@penguinRoomComingSoon": {
+    "description": "ペンギンルーム準備中メッセージ"
+  },
+
+  "penguinRoomDescription": "次のアップデートでミッションや表情変化が登場予定です。",
+  "@penguinRoomDescription": {
+    "description": "ペンギンルームの説明"
+  },
+
+  "streakDays": "{days}日連続",
+  "@streakDays": {
+    "description": "連続達成日数",
+    "placeholders": {
+      "days": {
+        "type": "int",
+        "example": "7"
+      }
+    }
+  },
+
+  "reminderOn": "Reminder ON",
+  "@reminderOn": {
+    "description": "リマインダー有効表示"
+  },
+
+  "anytime": "いつでも",
+  "@anytime": {
+    "description": "スケジュール：いつでも"
+  },
+
+  "error": "エラー: {message}",
+  "@error": {
+    "description": "エラーメッセージ",
+    "placeholders": {
+      "message": {
+        "type": "String",
+        "example": "データの読み込みに失敗しました"
+      }
+    }
+  }
+}

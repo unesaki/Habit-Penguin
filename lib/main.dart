@@ -2,16 +2,22 @@ import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 
 import 'models/habit_task.dart';
 import 'models/task_completion_history.dart';
+import 'models/notification_history.dart';
+import 'models/advanced_notification_settings.dart';
 import 'providers/providers.dart';
+import 'screens/settings_screen.dart';
+import 'screens/advanced_notification_screen.dart';
 import 'services/migration_service.dart';
 import 'services/monitoring_service.dart';
 import 'services/notification_service.dart';
+import 'l10n/app_localizations.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -38,8 +44,13 @@ Future<void> main() async {
       await Hive.initFlutter();
       Hive.registerAdapter(HabitTaskAdapter());
       Hive.registerAdapter(TaskCompletionHistoryAdapter());
+      Hive.registerAdapter(NotificationHistoryAdapter());
+      Hive.registerAdapter(AdvancedNotificationSettingsAdapter());
       await Hive.openBox<HabitTask>('tasks');
       await Hive.openBox<TaskCompletionHistory>('completion_history');
+      await Hive.openBox<NotificationHistory>('notification_history');
+      await Hive.openBox<AdvancedNotificationSettings>('advanced_notification_settings');
+      await Hive.openBox('notification_settings');
       final appStateBox = await Hive.openBox('appState');
 
       // データマイグレーション実行
@@ -49,7 +60,14 @@ Future<void> main() async {
       final notificationService = NotificationService();
       await notificationService.requestPermissions();
 
-      runApp(const ProviderScope(child: HabitPenguinApp()));
+      runApp(
+        ProviderScope(
+          overrides: [
+            notificationServiceProvider.overrideWithValue(notificationService),
+          ],
+          child: const HabitPenguinApp(),
+        ),
+      );
     },
   );
 }
@@ -61,6 +79,17 @@ class HabitPenguinApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Habit Penguin',
+      // 多言語化対応
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('ja', ''), // 日本語
+        Locale('en', ''), // 英語
+      ],
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.lightBlueAccent),
         useMaterial3: true,
@@ -77,15 +106,45 @@ class HabitPenguinApp extends StatelessWidget {
   }
 }
 
-class HabitHomeShell extends StatefulWidget {
+class HabitHomeShell extends ConsumerStatefulWidget {
   const HabitHomeShell({super.key});
 
   @override
-  State<HabitHomeShell> createState() => _HabitHomeShellState();
+  ConsumerState<HabitHomeShell> createState() => _HabitHomeShellState();
 }
 
-class _HabitHomeShellState extends State<HabitHomeShell> {
+class _HabitHomeShellState extends ConsumerState<HabitHomeShell> {
   int _currentIndex = 1;
+
+  @override
+  void initState() {
+    super.initState();
+    // 通知タップ時のナビゲーションを設定
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final notificationService = ref.read(notificationServiceProvider);
+      notificationService.onNotificationTapped = (payload) {
+        if (payload != null && payload.startsWith('task_')) {
+          // タスクIDを抽出
+          final taskIdStr = payload.replaceFirst('task_', '');
+          final taskId = int.tryParse(taskIdStr);
+
+          if (taskId != null) {
+            // Tasksタブに切り替えてタスクを開く
+            setState(() {
+              _currentIndex = 0;
+            });
+
+            // タスク編集画面を開く
+            final taskRepository = ref.read(taskRepositoryProvider);
+            final task = taskRepository.getTaskAt(taskId);
+            if (task != null && mounted) {
+              _openTaskForm(context, initialTask: task, taskIndex: taskId);
+            }
+          }
+        }
+      };
+    });
+  }
 
   void _onTabTapped(int index) {
     setState(() {
@@ -108,10 +167,24 @@ class _HabitHomeShellState extends State<HabitHomeShell> {
 
   @override
   Widget build(BuildContext context) {
-    final tabTitles = ['Tasks', 'Home', 'Penguin'];
+    final l10n = AppLocalizations.of(context)!;
+    final tabTitles = [l10n.tabTasks, l10n.tabHome, l10n.tabPenguin];
     return Scaffold(
       appBar: AppBar(
-        title: Text('Habit Penguin - ${tabTitles[_currentIndex]}'),
+        title: Text('${l10n.appTitle} - ${tabTitles[_currentIndex]}'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings),
+            tooltip: '設定',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const SettingsScreen(),
+                ),
+              );
+            },
+          ),
+        ],
       ),
       body: IndexedStack(
         index: _currentIndex,
@@ -988,12 +1061,39 @@ class _TaskFormPageState extends ConsumerState<TaskFormPage> {
                             ? const SizedBox.shrink()
                             : Padding(
                                 padding: const EdgeInsets.only(top: 12),
-                                child: _DateActionRow(
-                                  label: '通知時刻',
-                                  value: _reminderTime != null
-                                      ? _formatTimeLabel(_reminderTime!)
-                                      : '未選択',
-                                  onTap: _pickReminderTime,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                  children: [
+                                    _DateActionRow(
+                                      label: '通知時刻',
+                                      value: _reminderTime != null
+                                          ? _formatTimeLabel(_reminderTime!)
+                                          : '未選択',
+                                      onTap: _pickReminderTime,
+                                    ),
+                                    if (widget.taskIndex != null)
+                                      Padding(
+                                        padding: const EdgeInsets.only(top: 8),
+                                        child: OutlinedButton.icon(
+                                          onPressed: () {
+                                            Navigator.of(context).push(
+                                              MaterialPageRoute<void>(
+                                                builder: (_) =>
+                                                    AdvancedNotificationScreen(
+                                                  taskId: widget.taskIndex!,
+                                                  taskName: _nameController.text,
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                          icon: const Icon(Icons.tune),
+                                          label: const Text('高度な通知設定'),
+                                          style: OutlinedButton.styleFrom(
+                                            padding: const EdgeInsets.all(12),
+                                          ),
+                                        ),
+                                      ),
+                                  ],
                                 ),
                               ),
                       ),
