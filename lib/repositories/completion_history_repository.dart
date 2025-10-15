@@ -110,6 +110,17 @@ class CompletionHistoryRepository {
     }
   }
 
+  /// タスクの並び替え後にタスクキーを更新
+  Future<void> updateTaskKeyAfterReorder(int oldKey, int newKey) async {
+    for (var i = 0; i < _box.length; i++) {
+      final record = _box.getAt(i);
+      if (record != null && record.taskKey == oldKey) {
+        record.taskKey = newKey;
+        await record.save();
+      }
+    }
+  }
+
   /// ストリーク（連続達成日数）を計算
   int calculateStreak(int taskKey) {
     final history = getHistoryForTask(taskKey);

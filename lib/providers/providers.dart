@@ -7,6 +7,7 @@ import '../repositories/completion_history_repository.dart';
 import '../repositories/task_repository.dart';
 import '../services/notification_service.dart';
 import '../services/xp_service.dart';
+import '../services/undo_service.dart';
 
 /// CompletionHistoryRepositoryのプロバイダー
 final completionHistoryRepositoryProvider =
@@ -35,6 +36,12 @@ final xpServiceProvider = Provider<XpService>((ref) {
 /// シングルトンとしてサービスを提供
 final notificationServiceProvider = Provider<NotificationService>((ref) {
   return NotificationService();
+});
+
+/// UndoServiceのプロバイダー
+/// Undo/Redo機能を提供
+final undoServiceProvider = ChangeNotifierProvider<UndoService>((ref) {
+  return UndoService();
 });
 
 /// 現在のXPを監視するプロバイダー

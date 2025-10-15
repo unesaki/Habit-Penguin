@@ -606,16 +606,44 @@ class _CreateTaskCallout extends StatelessWidget {
   }
 }
 
-class TasksTab extends ConsumerWidget {
+class TasksTab extends ConsumerStatefulWidget {
   const TasksTab({super.key, required this.onEditTask});
 
   final void Function(int index, HabitTask task) onEditTask;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<TasksTab> createState() => _TasksTabState();
+}
+
+class _TasksTabState extends ConsumerState<TasksTab> {
+  bool _isSelectionMode = false;
+  final Set<int> _selectedIndices = {};
+
+  void _toggleSelectionMode() {
+    setState(() {
+      _isSelectionMode = !_isSelectionMode;
+      if (!_isSelectionMode) {
+        _selectedIndices.clear();
+      }
+    });
+  }
+
+  void _toggleSelection(int index) {
+    setState(() {
+      if (_selectedIndices.contains(index)) {
+        _selectedIndices.remove(index);
+      } else {
+        _selectedIndices.add(index);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final currentXpAsync = ref.watch(currentXpProvider);
     final openTasksAsync = ref.watch(openTasksProvider);
     final todayActiveTasksAsync = ref.watch(todayActiveTasksProvider);
+    final undoService = ref.watch(undoServiceProvider);
 
     return currentXpAsync.when(
       data: (currentXp) {
@@ -641,6 +669,24 @@ class TasksTab extends ConsumerWidget {
                       ),
                     ),
                     const Spacer(),
+                    if (!_isSelectionMode)
+                      IconButton(
+                        icon: const Icon(Icons.checklist),
+                        tooltip: '選択',
+                        onPressed: openEntries.isEmpty ? null : _toggleSelectionMode,
+                      ),
+                    if (_isSelectionMode)
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        tooltip: 'キャンセル',
+                        onPressed: _toggleSelectionMode,
+                      ),
+                    if (_isSelectionMode && _selectedIndices.isNotEmpty)
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline),
+                        tooltip: '削除',
+                        onPressed: () => _deleteSelectedTasks(context, ref, openEntries),
+                      ),
                     TextButton.icon(
                       onPressed: () => _openCompletedTasks(context),
                       icon: const Icon(Icons.history),
@@ -648,6 +694,25 @@ class TasksTab extends ConsumerWidget {
                     ),
                   ],
                 ),
+                if (undoService.canUndo && !_isSelectionMode)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: TextButton.icon(
+                      onPressed: () async {
+                        await undoService.undo();
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('「${undoService.lastActionDescription ?? "操作"}」を取り消しました'),
+                              duration: const Duration(seconds: 2),
+                            ),
+                          );
+                        }
+                      },
+                      icon: const Icon(Icons.undo),
+                      label: Text('取り消し: ${undoService.lastActionDescription}'),
+                    ),
+                  ),
                 const SizedBox(height: 16),
                 Text('今日のタスク', style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: 12),
@@ -663,11 +728,16 @@ class TasksTab extends ConsumerWidget {
                       child: _TaskListTile(
                         task: entry.value,
                         taskIndex: entry.key,
-                        onTap: () => onEditTask(entry.key, entry.value),
+                        onTap: _isSelectionMode
+                            ? () => _toggleSelection(entry.key)
+                            : () => widget.onEditTask(entry.key, entry.value),
                         onDelete: () => _confirmDelete(context, ref, entry.key),
                         onComplete: () =>
                             _completeTaskWithXp(context, ref, entry.key),
                         isActive: true,
+                        isSelectionMode: _isSelectionMode,
+                        isSelected: _selectedIndices.contains(entry.key),
+                        onSelectionToggle: () => _toggleSelection(entry.key),
                       ),
                     ),
                   ),
@@ -686,11 +756,16 @@ class TasksTab extends ConsumerWidget {
                       child: _TaskListTile(
                         task: entry.value,
                         taskIndex: entry.key,
-                        onTap: () => onEditTask(entry.key, entry.value),
+                        onTap: _isSelectionMode
+                            ? () => _toggleSelection(entry.key)
+                            : () => widget.onEditTask(entry.key, entry.value),
                         onDelete: () => _confirmDelete(context, ref, entry.key),
                         onComplete: () =>
                             _completeTaskWithXp(context, ref, entry.key),
                         isActive: entry.value.isActiveOn(DateTime.now()),
+                        isSelectionMode: _isSelectionMode,
+                        isSelected: _selectedIndices.contains(entry.key),
+                        onSelectionToggle: () => _toggleSelection(entry.key),
                       ),
                     ),
                   ),
@@ -715,38 +790,113 @@ class TasksTab extends ConsumerWidget {
     WidgetRef ref,
     int index,
   ) async {
-    final shouldDelete =
-        await showDialog<bool>(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('タスクを削除しますか？'),
-            content: const Text('この操作は取り消せません。'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
-                child: const Text('キャンセル'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(true),
-                child: const Text('削除'),
-              ),
-            ],
-          ),
-        ) ??
-        false;
+    final repository = ref.read(taskRepositoryProvider);
+    final undoService = ref.read(undoServiceProvider);
+    final task = repository.getTaskAt(index);
+    if (task == null) return;
 
-    if (!shouldDelete) {
-      return;
-    }
+    // タスクのコピーを保存（Undo用）
+    final taskCopy = HabitTask(
+      name: task.name,
+      iconCodePoint: task.iconCodePoint,
+      reminderEnabled: task.reminderEnabled,
+      difficulty: task.difficulty,
+      scheduledDate: task.scheduledDate,
+      repeatStart: task.repeatStart,
+      repeatEnd: task.repeatEnd,
+      reminderTime: task.reminderTime,
+    );
+
+    // 削除実行
+    await repository.deleteTaskAt(index);
+
+    // Undo機能を記録
+    undoService.recordDeleteTask(
+      index: index,
+      task: taskCopy,
+      restoreFunction: () async {
+        // タスクを復元（同じ位置に挿入）
+        await repository.box.putAt(index, taskCopy);
+      },
+    );
+
+    if (!context.mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('「${task.name}」を削除しました'),
+        duration: const Duration(seconds: 3),
+        action: SnackBarAction(
+          label: '取り消し',
+          onPressed: () async {
+            await undoService.undo();
+          },
+        ),
+      ),
+    );
+  }
+
+  Future<void> _deleteSelectedTasks(
+    BuildContext context,
+    WidgetRef ref,
+    List<MapEntry<int, HabitTask>> allTasks,
+  ) async {
+    if (_selectedIndices.isEmpty) return;
 
     final repository = ref.read(taskRepositoryProvider);
-    await repository.deleteTaskAt(index);
-    if (!context.mounted) {
-      return;
+    final undoService = ref.read(undoServiceProvider);
+
+    // 削除するタスクのコピーを保存
+    final deletedTasks = <MapEntry<int, HabitTask>>[];
+    for (final index in _selectedIndices) {
+      final task = repository.getTaskAt(index);
+      if (task != null) {
+        deletedTasks.add(MapEntry(index, HabitTask(
+          name: task.name,
+          iconCodePoint: task.iconCodePoint,
+          reminderEnabled: task.reminderEnabled,
+          difficulty: task.difficulty,
+          scheduledDate: task.scheduledDate,
+          repeatStart: task.repeatStart,
+          repeatEnd: task.repeatEnd,
+          reminderTime: task.reminderTime,
+        )));
+      }
     }
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('タスクを削除しました。')));
+
+    // 削除実行
+    await repository.deleteTasks(_selectedIndices.toList());
+
+    // Undo機能を記録
+    undoService.recordDeleteTasks(
+      deletedTasks: deletedTasks,
+      restoreFunction: () async {
+        // タスクを復元
+        for (final entry in deletedTasks) {
+          await repository.box.putAt(entry.key, entry.value);
+        }
+      },
+    );
+
+    setState(() {
+      _selectedIndices.clear();
+      _isSelectionMode = false;
+    });
+
+    if (!context.mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('${deletedTasks.length}個のタスクを削除しました'),
+        duration: const Duration(seconds: 3),
+        action: SnackBarAction(
+          label: '取り消し',
+          onPressed: () async {
+            await undoService.undo();
+          },
+        ),
+      ),
+    );
   }
 
   void _openCompletedTasks(BuildContext context) {
@@ -773,6 +923,7 @@ Future<void> _completeTaskWithXp(
 ) async {
   final repository = ref.read(taskRepositoryProvider);
   final xpService = ref.read(xpServiceProvider);
+  final undoService = ref.read(undoServiceProvider);
 
   final task = repository.getTaskAt(index);
   if (task == null) {
@@ -795,6 +946,16 @@ Future<void> _completeTaskWithXp(
 
   // XPを追加
   await xpService.addXp(gainedXp);
+
+  // Undo機能を記録
+  undoService.recordCompleteTask(
+    index: index,
+    task: task,
+    undoFunction: () async {
+      await repository.uncompleteTask(index);
+      await xpService.subtractXp(gainedXp);
+    },
+  );
 
   if (!context.mounted) {
     return;
@@ -1338,6 +1499,9 @@ class _TaskListTile extends ConsumerWidget {
     required this.onDelete,
     required this.onComplete,
     required this.isActive,
+    this.isSelectionMode = false,
+    this.isSelected = false,
+    this.onSelectionToggle,
   });
 
   final HabitTask task;
@@ -1346,6 +1510,9 @@ class _TaskListTile extends ConsumerWidget {
   final VoidCallback onDelete;
   final VoidCallback onComplete;
   final bool isActive;
+  final bool isSelectionMode;
+  final bool isSelected;
+  final VoidCallback? onSelectionToggle;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -1437,21 +1604,62 @@ class _TaskListTile extends ConsumerWidget {
                   ],
                 ),
               ),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.check_circle_outline),
-                    color: theme.colorScheme.primary,
-                    tooltip: '完了にする',
-                    onPressed: onComplete,
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.delete_outline),
-                    onPressed: onDelete,
-                  ),
-                ],
-              ),
+              if (isSelectionMode)
+                Checkbox(
+                  value: isSelected,
+                  onChanged: (_) => onSelectionToggle?.call(),
+                )
+              else
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    PopupMenuButton<String>(
+                      icon: const Icon(Icons.more_vert),
+                      tooltip: 'メニュー',
+                      onSelected: (value) async {
+                        final repository = ref.read(taskRepositoryProvider);
+                        if (value == 'duplicate') {
+                          await repository.duplicateTask(taskIndex);
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('「${task.name}」を複製しました')),
+                            );
+                          }
+                        } else if (value == 'delete') {
+                          onDelete();
+                        }
+                      },
+                      itemBuilder: (context) => [
+                        const PopupMenuItem(
+                          value: 'duplicate',
+                          child: Row(
+                            children: [
+                              Icon(Icons.content_copy),
+                              SizedBox(width: 8),
+                              Text('複製'),
+                            ],
+                          ),
+                        ),
+                        const PopupMenuItem(
+                          value: 'delete',
+                          child: Row(
+                            children: [
+                              Icon(Icons.delete_outline),
+                              SizedBox(width: 8),
+                              Text('削除'),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.check_circle_outline),
+                      color: theme.colorScheme.primary,
+                      tooltip: '完了にする',
+                      onPressed: onComplete,
+                    ),
+                  ],
+                ),
             ],
           ),
         ),

@@ -188,4 +188,52 @@ class TaskRepository {
 
   /// Boxを取得（状態変化監視用）
   Box<HabitTask> get box => _box;
+
+  /// タスクを複製（新しいタスクとして追加）
+  Future<void> duplicateTask(int index) async {
+    final task = _box.getAt(index);
+    if (task == null) return;
+
+    // 新しいタスクを作成（名前に「(コピー)」を追加）
+    final duplicatedTask = HabitTask(
+      name: '${task.name} (コピー)',
+      iconCodePoint: task.iconCodePoint,
+      reminderEnabled: task.reminderEnabled,
+      difficulty: task.difficulty,
+      scheduledDate: task.scheduledDate,
+      repeatStart: task.repeatStart,
+      repeatEnd: task.repeatEnd,
+      reminderTime: task.reminderTime,
+    );
+
+    await addTask(duplicatedTask);
+  }
+
+  /// タスクの順序を入れ替え（ドラッグ&ドロップ用）
+  Future<void> reorderTask(int oldIndex, int newIndex) async {
+    if (oldIndex == newIndex) return;
+
+    final task = _box.getAt(oldIndex);
+    if (task == null) return;
+
+    // タスクを削除して新しい位置に挿入
+    await _box.deleteAt(oldIndex);
+
+    // newIndexの調整（削除後のインデックスを考慮）
+    final insertIndex = oldIndex < newIndex ? newIndex - 1 : newIndex;
+    await _box.putAt(insertIndex, task);
+
+    // 履歴のタスクキーも更新が必要
+    await _historyRepo.updateTaskKeyAfterReorder(oldIndex, insertIndex);
+  }
+
+  /// 複数のタスクを削除
+  Future<void> deleteTasks(List<int> indices) async {
+    // インデックスを降順にソートして削除（後ろから削除）
+    final sortedIndices = indices.toList()..sort((a, b) => b.compareTo(a));
+
+    for (final index in sortedIndices) {
+      await deleteTaskAt(index);
+    }
+  }
 }
