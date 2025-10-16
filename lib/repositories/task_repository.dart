@@ -1,13 +1,18 @@
 import 'package:hive/hive.dart';
 
 import '../models/habit_task.dart';
+import '../models/task_completion_history.dart';
+import '../services/notification_service.dart';
+import 'completion_history_repository.dart';
 
 /// タスクデータへのアクセスを管理するRepository
 /// Hiveへの直接アクセスをカプセル化し、ビジネスロジックを提供
 class TaskRepository {
-  TaskRepository(this._box);
+  TaskRepository(this._box, this._historyRepo, [this._notificationService]);
 
   final Box<HabitTask> _box;
+  final CompletionHistoryRepository _historyRepo;
+  final NotificationService? _notificationService;
 
   /// すべてのタスクを取得
   List<HabitTask> getAllTasks() {
@@ -26,45 +31,64 @@ class TaskRepository {
     return _box.getAt(index);
   }
 
-  /// 未完了のタスクのみを取得（インデックス付き）
+  /// アクティブ（表示すべき）タスクを取得（インデックス付き）
+  /// 繰り返しタスクは毎日表示され、単発タスクは未完了の場合のみ表示
   List<MapEntry<int, HabitTask>> getOpenTasksWithIndex() {
     final openTasks = <MapEntry<int, HabitTask>>[];
+    final today = DateTime.now();
+
     for (var i = 0; i < _box.length; i++) {
       final task = _box.getAt(i);
-      if (task == null || task.isCompleted) continue;
-      openTasks.add(MapEntry(i, task));
+      if (task == null) continue;
+
+      // 繰り返しタスク: スケジュール内なら常に表示
+      if (task.isRepeating) {
+        if (task.isActiveOn(today)) {
+          openTasks.add(MapEntry(i, task));
+        }
+      } else {
+        // 単発タスク: 未完了（履歴がない）場合のみ表示
+        if (!_historyRepo.isTaskCompletedOnDate(i, today)) {
+          openTasks.add(MapEntry(i, task));
+        }
+      }
     }
     return openTasks;
   }
 
-  /// 完了済みタスクのみを取得
-  List<HabitTask> getCompletedTasks() {
-    final completed = <HabitTask>[];
-    for (var i = 0; i < _box.length; i++) {
-      final task = _box.getAt(i);
-      if (task != null && task.isCompleted) {
-        completed.add(task);
-      }
+  /// 完了済みタスクを取得（完了履歴から）
+  List<MapEntry<int, TaskCompletionHistory>> getCompletedTasksWithHistory() {
+    final allHistory = _historyRepo.getAllHistory();
+    final result = <MapEntry<int, TaskCompletionHistory>>[];
+
+    for (final history in allHistory) {
+      result.add(MapEntry(history.taskKey, history));
     }
+
     // 完了日時の降順でソート
-    completed.sort((a, b) {
-      final aDate = a.completedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
-      final bDate = b.completedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
-      return bDate.compareTo(aDate);
-    });
-    return completed;
+    result.sort((a, b) => b.value.completedAt.compareTo(a.value.completedAt));
+    return result;
   }
 
   /// 指定日にアクティブなタスクを取得（インデックス付き）
+  /// 完了済みを除外するか含めるかを選択できる
   List<MapEntry<int, HabitTask>> getActiveTasksOn(
     DateTime date, {
-    bool includeCompleted = false,
+    bool excludeCompleted = true,
   }) {
     final activeTasks = <MapEntry<int, HabitTask>>[];
+    final completedKeys =
+        excludeCompleted ? _historyRepo.getTodayCompletedTaskKeys() : <int>{};
+
     for (var i = 0; i < _box.length; i++) {
       final task = _box.getAt(i);
       if (task == null) continue;
-      if (!includeCompleted && task.isCompleted) continue;
+
+      // 完了済みを除外
+      if (excludeCompleted && completedKeys.contains(i)) {
+        continue;
+      }
+
       if (task.isActiveOn(date)) {
         activeTasks.add(MapEntry(i, task));
       }
@@ -72,33 +96,91 @@ class TaskRepository {
     return activeTasks;
   }
 
+  /// 今日完了済みかどうかをチェック
+  bool isCompletedToday(int taskKey) {
+    return _historyRepo.isTaskCompletedOnDate(taskKey, DateTime.now());
+  }
+
   /// 新しいタスクを追加
   Future<void> addTask(HabitTask task) async {
-    await _box.add(task);
+    final index = await _box.add(task);
+
+    // リマインダーが有効な場合、通知をスケジュール
+    if (task.reminderEnabled && task.reminderTime != null) {
+      await _notificationService?.scheduleTaskNotification(
+        index,
+        task,
+        task.reminderTime!,
+      );
+    }
   }
 
   /// タスクを更新（既存のHiveObjectの場合）
   Future<void> updateTask(HabitTask task) async {
     await task.save();
+
+    // タスクのインデックスを取得
+    final index = _box.values.toList().indexOf(task);
+    if (index == -1) return;
+
+    // リマインダーが有効な場合、通知をスケジュール
+    if (task.reminderEnabled && task.reminderTime != null) {
+      await _notificationService?.scheduleTaskNotification(
+        index,
+        task,
+        task.reminderTime!,
+      );
+    } else {
+      // リマインダーが無効の場合、通知をキャンセル
+      await _notificationService?.cancelTaskNotification(index);
+    }
   }
 
-  /// インデックス指定でタスクを削除
+  /// インデックス指定でタスクを削除（履歴も削除）
   Future<void> deleteTaskAt(int index) async {
+    // 関連する履歴も削除
+    await _historyRepo.deleteAllForTask(index);
+
+    // 通知もキャンセル
+    await _notificationService?.cancelTaskNotification(index);
+
     await _box.deleteAt(index);
   }
 
-  /// タスクを完了にする
+  /// タスクを完了にする（履歴に記録）
   Future<void> completeTask(int index, {required int xpGained}) async {
     final task = _box.getAt(index);
-    if (task == null || task.isCompleted) {
+    if (task == null) {
       return;
     }
 
-    task
-      ..isCompleted = true
-      ..completedAt = DateTime.now()
-      ..completionXp = xpGained;
-    await task.save();
+    // 今日既に完了している場合は何もしない
+    if (_historyRepo.isTaskCompletedOnDate(index, DateTime.now())) {
+      return;
+    }
+
+    // 完了履歴を追加
+    final completion = TaskCompletionHistory(
+      taskKey: index,
+      completedAt: DateTime.now(),
+      earnedXp: xpGained,
+    );
+    await _historyRepo.addCompletion(completion);
+
+    // 単発タスクの場合は、マイグレーション用にisCompletedも設定
+    // （将来的には削除予定）
+    if (!task.isRepeating) {
+      task
+        ..isCompleted = true
+        ..completedAt = DateTime.now()
+        ..completionXp = xpGained;
+      await task.save();
+    }
+  }
+
+  /// タスクの完了を取り消す（今日の完了履歴を削除）
+  Future<bool> uncompleteTask(int index) async {
+    return await _historyRepo.deleteTodayCompletionForTask(index);
   }
 
   /// タスクの総数を取得
@@ -106,4 +188,52 @@ class TaskRepository {
 
   /// Boxを取得（状態変化監視用）
   Box<HabitTask> get box => _box;
+
+  /// タスクを複製（新しいタスクとして追加）
+  Future<void> duplicateTask(int index) async {
+    final task = _box.getAt(index);
+    if (task == null) return;
+
+    // 新しいタスクを作成（名前に「(コピー)」を追加）
+    final duplicatedTask = HabitTask(
+      name: '${task.name} (コピー)',
+      iconCodePoint: task.iconCodePoint,
+      reminderEnabled: task.reminderEnabled,
+      difficulty: task.difficulty,
+      scheduledDate: task.scheduledDate,
+      repeatStart: task.repeatStart,
+      repeatEnd: task.repeatEnd,
+      reminderTime: task.reminderTime,
+    );
+
+    await addTask(duplicatedTask);
+  }
+
+  /// タスクの順序を入れ替え（ドラッグ&ドロップ用）
+  Future<void> reorderTask(int oldIndex, int newIndex) async {
+    if (oldIndex == newIndex) return;
+
+    final task = _box.getAt(oldIndex);
+    if (task == null) return;
+
+    // タスクを削除して新しい位置に挿入
+    await _box.deleteAt(oldIndex);
+
+    // newIndexの調整（削除後のインデックスを考慮）
+    final insertIndex = oldIndex < newIndex ? newIndex - 1 : newIndex;
+    await _box.putAt(insertIndex, task);
+
+    // 履歴のタスクキーも更新が必要
+    await _historyRepo.updateTaskKeyAfterReorder(oldIndex, insertIndex);
+  }
+
+  /// 複数のタスクを削除
+  Future<void> deleteTasks(List<int> indices) async {
+    // インデックスを降順にソートして削除（後ろから削除）
+    final sortedIndices = indices.toList()..sort((a, b) => b.compareTo(a));
+
+    for (final index in sortedIndices) {
+      await deleteTaskAt(index);
+    }
+  }
 }

@@ -21,6 +21,13 @@ class XpService {
     await _appStateBox.put(_xpKey, currentXp + amount);
   }
 
+  /// 経験値を減算（Undo用）
+  Future<void> subtractXp(int amount) async {
+    final currentXp = getCurrentXp();
+    final newXp = (currentXp - amount).clamp(0, double.infinity).toInt();
+    await _appStateBox.put(_xpKey, newXp);
+  }
+
   /// 経験値を設定（直接上書き）
   Future<void> setXp(int amount) async {
     await _appStateBox.put(_xpKey, amount);

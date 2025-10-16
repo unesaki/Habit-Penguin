@@ -11,9 +11,10 @@ class HabitTask extends HiveObject {
     this.scheduledDate,
     this.repeatStart,
     this.repeatEnd,
-    this.isCompleted = false,
-    this.completedAt,
-    this.completionXp,
+    this.reminderTime,
+    @Deprecated('Use TaskCompletionHistory instead') this.isCompleted = false,
+    @Deprecated('Use TaskCompletionHistory instead') this.completedAt,
+    @Deprecated('Use TaskCompletionHistory instead') this.completionXp,
   });
 
   String name;
@@ -23,19 +24,30 @@ class HabitTask extends HiveObject {
   DateTime? scheduledDate;
   DateTime? repeatStart;
   DateTime? repeatEnd;
+  TimeOfDay? reminderTime;
+
+  /// 非推奨: 履歴ベースの完了管理に移行しました
+  /// マイグレーション用に残しています
+  @Deprecated('Use CompletionHistoryRepository.isTaskCompletedOnDate instead')
   bool isCompleted;
+
+  /// 非推奨: 履歴ベースの完了管理に移行しました
+  @Deprecated('Use TaskCompletionHistory instead')
   DateTime? completedAt;
+
+  /// 非推奨: 履歴ベースの完了管理に移行しました
+  @Deprecated('Use TaskCompletionHistory instead')
   int? completionXp;
 
   IconData get iconData => IconData(iconCodePoint, fontFamily: 'MaterialIcons');
 
   bool get isRepeating => repeatStart != null && repeatEnd != null;
 
+  /// 指定日にアクティブかどうか（スケジュール範囲内かどうか）
+  /// 注: 完了状態のチェックは含まれません（履歴で管理）
   bool isActiveOn(DateTime date) {
-    if (isCompleted) {
-      return false;
-    }
     final dateOnly = DateTime(date.year, date.month, date.day);
+
     if (isRepeating && repeatStart != null && repeatEnd != null) {
       final start = DateTime(
         repeatStart!.year,
@@ -45,9 +57,11 @@ class HabitTask extends HiveObject {
       final end = DateTime(repeatEnd!.year, repeatEnd!.month, repeatEnd!.day);
       return !dateOnly.isBefore(start) && !dateOnly.isAfter(end);
     }
+
     if (scheduledDate == null) {
-      return true;
+      return true; // スケジュールなし = いつでもアクティブ
     }
+
     final scheduled = DateTime(
       scheduledDate!.year,
       scheduledDate!.month,
@@ -64,6 +78,7 @@ class HabitTask extends HiveObject {
     DateTime? scheduledDate,
     DateTime? repeatStart,
     DateTime? repeatEnd,
+    TimeOfDay? reminderTime,
     bool? isRepeating,
     bool? isCompleted,
     DateTime? completedAt,
@@ -80,6 +95,7 @@ class HabitTask extends HiveObject {
           : (scheduledDate ?? this.scheduledDate),
       repeatStart: shouldRepeat ? (repeatStart ?? this.repeatStart) : null,
       repeatEnd: shouldRepeat ? (repeatEnd ?? this.repeatEnd) : null,
+      reminderTime: reminderTime ?? this.reminderTime,
       isCompleted: isCompleted ?? this.isCompleted,
       completedAt: completedAt ?? this.completedAt,
       completionXp: completionXp ?? this.completionXp,
@@ -92,6 +108,21 @@ enum TaskDifficulty { easy, normal, hard }
 class HabitTaskAdapter extends TypeAdapter<HabitTask> {
   @override
   final int typeId = 0;
+
+  TimeOfDay? _readTimeOfDay(dynamic value) {
+    if (value == null) return null;
+    if (value is int) {
+      final hour = value ~/ 60;
+      final minute = value % 60;
+      return TimeOfDay(hour: hour, minute: minute);
+    }
+    return null;
+  }
+
+  int? _writeTimeOfDay(TimeOfDay? time) {
+    if (time == null) return null;
+    return time.hour * 60 + time.minute;
+  }
 
   @override
   HabitTask read(BinaryReader reader) {
@@ -123,6 +154,7 @@ class HabitTaskAdapter extends TypeAdapter<HabitTask> {
       scheduledDate: readDate(fields[4]),
       repeatStart: readDate(fields[5]),
       repeatEnd: readDate(fields[6]),
+      reminderTime: _readTimeOfDay(fields[10]),
       isCompleted: (fields[7] as bool?) ?? false,
       completedAt: readDate(fields[8]),
       completionXp: (fields[9] as int?) ?? 0,
@@ -132,7 +164,7 @@ class HabitTaskAdapter extends TypeAdapter<HabitTask> {
   @override
   void write(BinaryWriter writer, HabitTask obj) {
     writer
-      ..writeByte(10)
+      ..writeByte(11)
       ..writeByte(0)
       ..write(obj.name)
       ..writeByte(1)
@@ -152,6 +184,8 @@ class HabitTaskAdapter extends TypeAdapter<HabitTask> {
       ..writeByte(8)
       ..write(obj.completedAt)
       ..writeByte(9)
-      ..write(obj.completionXp ?? 0);
+      ..write(obj.completionXp ?? 0)
+      ..writeByte(10)
+      ..write(_writeTimeOfDay(obj.reminderTime));
   }
 }
