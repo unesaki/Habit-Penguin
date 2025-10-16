@@ -617,14 +617,24 @@ class TasksTab extends ConsumerStatefulWidget {
 
 class _TasksTabState extends ConsumerState<TasksTab> {
   bool _isSelectionMode = false;
+  bool _isReorderMode = false;
   final Set<int> _selectedIndices = {};
 
   void _toggleSelectionMode() {
     setState(() {
       _isSelectionMode = !_isSelectionMode;
+      _isReorderMode = false;
       if (!_isSelectionMode) {
         _selectedIndices.clear();
       }
+    });
+  }
+
+  void _toggleReorderMode() {
+    setState(() {
+      _isReorderMode = !_isReorderMode;
+      _isSelectionMode = false;
+      _selectedIndices.clear();
     });
   }
 
@@ -669,17 +679,23 @@ class _TasksTabState extends ConsumerState<TasksTab> {
                       ),
                     ),
                     const Spacer(),
-                    if (!_isSelectionMode)
+                    if (!_isSelectionMode && !_isReorderMode)
+                      IconButton(
+                        icon: const Icon(Icons.swap_vert),
+                        tooltip: '並び替え',
+                        onPressed: openEntries.isEmpty ? null : _toggleReorderMode,
+                      ),
+                    if (!_isSelectionMode && !_isReorderMode)
                       IconButton(
                         icon: const Icon(Icons.checklist),
                         tooltip: '選択',
                         onPressed: openEntries.isEmpty ? null : _toggleSelectionMode,
                       ),
-                    if (_isSelectionMode)
+                    if (_isSelectionMode || _isReorderMode)
                       IconButton(
                         icon: const Icon(Icons.close),
                         tooltip: 'キャンセル',
-                        onPressed: _toggleSelectionMode,
+                        onPressed: _isSelectionMode ? _toggleSelectionMode : _toggleReorderMode,
                       ),
                     if (_isSelectionMode && _selectedIndices.isNotEmpty)
                       IconButton(
@@ -687,14 +703,15 @@ class _TasksTabState extends ConsumerState<TasksTab> {
                         tooltip: '削除',
                         onPressed: () => _deleteSelectedTasks(context, ref, openEntries),
                       ),
-                    TextButton.icon(
-                      onPressed: () => _openCompletedTasks(context),
-                      icon: const Icon(Icons.history),
-                      label: const Text('完了済み'),
-                    ),
+                    if (!_isReorderMode)
+                      TextButton.icon(
+                        onPressed: () => _openCompletedTasks(context),
+                        icon: const Icon(Icons.history),
+                        label: const Text('完了済み'),
+                      ),
                   ],
                 ),
-                if (undoService.canUndo && !_isSelectionMode)
+                if (undoService.canUndo && !_isSelectionMode && !_isReorderMode)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 12),
                     child: TextButton.icon(
@@ -713,62 +730,94 @@ class _TasksTabState extends ConsumerState<TasksTab> {
                       label: Text('取り消し: ${undoService.lastActionDescription}'),
                     ),
                   ),
+                if (_isReorderMode)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Card(
+                      color: Theme.of(context).colorScheme.primaryContainer,
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.info_outline,
+                              color: Theme.of(context).colorScheme.onPrimaryContainer,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                'タスクを長押ししてドラッグして並び替えます',
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.onPrimaryContainer,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
                 const SizedBox(height: 16),
-                Text('今日のタスク', style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(height: 12),
-                if (activeEntries.isEmpty)
-                  Text(
-                    '今日は予定されたタスクがありません。',
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  )
+                if (_isReorderMode)
+                  _buildReorderableTaskList(context, ref, openEntries)
                 else
-                  ...activeEntries.map(
-                    (entry) => Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: _TaskListTile(
-                        task: entry.value,
-                        taskIndex: entry.key,
-                        onTap: _isSelectionMode
-                            ? () => _toggleSelection(entry.key)
-                            : () => widget.onEditTask(entry.key, entry.value),
-                        onDelete: () => _confirmDelete(context, ref, entry.key),
-                        onComplete: () =>
-                            _completeTaskWithXp(context, ref, entry.key),
-                        isActive: true,
-                        isSelectionMode: _isSelectionMode,
-                        isSelected: _selectedIndices.contains(entry.key),
-                        onSelectionToggle: () => _toggleSelection(entry.key),
+                  ...[
+                    Text('今日のタスク', style: Theme.of(context).textTheme.titleMedium),
+                    const SizedBox(height: 12),
+                    if (activeEntries.isEmpty)
+                      Text(
+                        '今日は予定されたタスクがありません。',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      )
+                    else
+                      ...activeEntries.map(
+                        (entry) => Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: _TaskListTile(
+                            task: entry.value,
+                            taskIndex: entry.key,
+                            onTap: _isSelectionMode
+                                ? () => _toggleSelection(entry.key)
+                                : () => widget.onEditTask(entry.key, entry.value),
+                            onDelete: () => _confirmDelete(context, ref, entry.key),
+                            onComplete: () =>
+                                _completeTaskWithXp(context, ref, entry.key),
+                            isActive: true,
+                            isSelectionMode: _isSelectionMode,
+                            isSelected: _selectedIndices.contains(entry.key),
+                            onSelectionToggle: () => _toggleSelection(entry.key),
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                const SizedBox(height: 24),
-                Text('登録中のタスク', style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(height: 12),
-                if (openEntries.isEmpty)
-                  Text(
-                    'タスクがまだありません。右下の＋で追加しよう。',
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  )
-                else
-                  ...backlogEntries.map(
-                    (entry) => Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: _TaskListTile(
-                        task: entry.value,
-                        taskIndex: entry.key,
-                        onTap: _isSelectionMode
-                            ? () => _toggleSelection(entry.key)
-                            : () => widget.onEditTask(entry.key, entry.value),
-                        onDelete: () => _confirmDelete(context, ref, entry.key),
-                        onComplete: () =>
-                            _completeTaskWithXp(context, ref, entry.key),
-                        isActive: entry.value.isActiveOn(DateTime.now()),
-                        isSelectionMode: _isSelectionMode,
-                        isSelected: _selectedIndices.contains(entry.key),
-                        onSelectionToggle: () => _toggleSelection(entry.key),
+                    const SizedBox(height: 24),
+                    Text('登録中のタスク', style: Theme.of(context).textTheme.titleMedium),
+                    const SizedBox(height: 12),
+                    if (openEntries.isEmpty)
+                      Text(
+                        'タスクがまだありません。右下の＋で追加しよう。',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      )
+                    else
+                      ...backlogEntries.map(
+                        (entry) => Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: _TaskListTile(
+                            task: entry.value,
+                            taskIndex: entry.key,
+                            onTap: _isSelectionMode
+                                ? () => _toggleSelection(entry.key)
+                                : () => widget.onEditTask(entry.key, entry.value),
+                            onDelete: () => _confirmDelete(context, ref, entry.key),
+                            onComplete: () =>
+                                _completeTaskWithXp(context, ref, entry.key),
+                            isActive: entry.value.isActiveOn(DateTime.now()),
+                            isSelectionMode: _isSelectionMode,
+                            isSelected: _selectedIndices.contains(entry.key),
+                            onSelectionToggle: () => _toggleSelection(entry.key),
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
+                  ],
               ],
             );
               },
@@ -895,6 +944,69 @@ class _TasksTabState extends ConsumerState<TasksTab> {
             await undoService.undo();
           },
         ),
+      ),
+    );
+  }
+
+  Widget _buildReorderableTaskList(
+    BuildContext context,
+    WidgetRef ref,
+    List<MapEntry<int, HabitTask>> allTasks,
+  ) {
+    if (allTasks.isEmpty) {
+      return Text(
+        'タスクがまだありません。',
+        style: Theme.of(context).textTheme.bodyMedium,
+      );
+    }
+
+    return ReorderableListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: allTasks.length,
+      onReorder: (oldIndex, newIndex) async {
+        await _handleReorder(context, ref, allTasks, oldIndex, newIndex);
+      },
+      itemBuilder: (context, index) {
+        final entry = allTasks[index];
+        return Padding(
+          key: ValueKey(entry.key),
+          padding: const EdgeInsets.only(bottom: 12),
+          child: _TaskListTile(
+            task: entry.value,
+            taskIndex: entry.key,
+            onTap: () {}, // 並び替えモードではタップ無効
+            onDelete: () {}, // 並び替えモードでは削除無効
+            onComplete: () {}, // 並び替えモードでは完了無効
+            isActive: entry.value.isActiveOn(DateTime.now()),
+            isReorderMode: true,
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _handleReorder(
+    BuildContext context,
+    WidgetRef ref,
+    List<MapEntry<int, HabitTask>> allTasks,
+    int oldIndex,
+    int newIndex,
+  ) async {
+    if (oldIndex == newIndex) return;
+
+    final repository = ref.read(taskRepositoryProvider);
+    final taskEntry = allTasks[oldIndex];
+
+    // Hiveのインデックスを使って並び替え
+    await repository.reorderTask(taskEntry.key, newIndex);
+
+    if (!context.mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('「${taskEntry.value.name}」を移動しました'),
+        duration: const Duration(seconds: 2),
       ),
     );
   }
@@ -1502,6 +1614,7 @@ class _TaskListTile extends ConsumerWidget {
     this.isSelectionMode = false,
     this.isSelected = false,
     this.onSelectionToggle,
+    this.isReorderMode = false,
   });
 
   final HabitTask task;
@@ -1513,6 +1626,7 @@ class _TaskListTile extends ConsumerWidget {
   final bool isSelectionMode;
   final bool isSelected;
   final VoidCallback? onSelectionToggle;
+  final bool isReorderMode;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -1604,7 +1718,12 @@ class _TaskListTile extends ConsumerWidget {
                   ],
                 ),
               ),
-              if (isSelectionMode)
+              if (isReorderMode)
+                Icon(
+                  Icons.drag_handle,
+                  color: theme.colorScheme.onSurfaceVariant,
+                )
+              else if (isSelectionMode)
                 Checkbox(
                   value: isSelected,
                   onChanged: (_) => onSelectionToggle?.call(),

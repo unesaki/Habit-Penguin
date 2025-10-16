@@ -1,11 +1,94 @@
 # 操作性向上機能実装ドキュメント
 
 ## 概要
-Habit Penguinアプリにタスクの一括操作機能とUndo/Redo機能を実装しました。これにより、ユーザーはタスクをより効率的に管理できるようになります。
+Habit Penguinアプリにタスクの並び替え、一括操作機能、およびUndo/Redo機能を実装しました。これにより、ユーザーはタスクをより効率的に管理できるようになります。
 
 ## 実装内容
 
-### 1. タスクの複数選択機能
+### 1. タスクの並び替え機能（ドラッグ&ドロップ）
+
+#### UI要素
+- **並び替えボタン**: TasksTabの右上に「並び替え」ボタン（↕アイコン）を配置
+- **並び替えモード**: 並び替えモードON時、ReorderableListViewで全タスクを表示
+- **ドラッグハンドル**: 各タスクの右側にドラッグハンドルアイコンを表示
+- **ヘルプカード**: 「タスクを長押ししてドラッグして並び替えます」という説明を表示
+
+#### 実装詳細
+**lib/main.dart** - `_TasksTabState`
+
+```dart
+bool _isReorderMode = false;
+
+void _toggleReorderMode() {
+  setState(() {
+    _isReorderMode = !_isReorderMode;
+    _isSelectionMode = false;
+    _selectedIndices.clear();
+  });
+}
+
+Widget _buildReorderableTaskList(
+  BuildContext context,
+  WidgetRef ref,
+  List<MapEntry<int, HabitTask>> allTasks,
+) {
+  return ReorderableListView.builder(
+    shrinkWrap: true,
+    physics: const NeverScrollableScrollPhysics(),
+    itemCount: allTasks.length,
+    onReorder: (oldIndex, newIndex) async {
+      await _handleReorder(context, ref, allTasks, oldIndex, newIndex);
+    },
+    itemBuilder: (context, index) {
+      final entry = allTasks[index];
+      return Padding(
+        key: ValueKey(entry.key),
+        padding: const EdgeInsets.only(bottom: 12),
+        child: _TaskListTile(
+          task: entry.value,
+          taskIndex: entry.key,
+          isActive: entry.value.isActiveOn(DateTime.now()),
+          isReorderMode: true,
+        ),
+      );
+    },
+  );
+}
+```
+
+**lib/repositories/task_repository.dart**
+
+```dart
+/// タスクの順序を入れ替え（ドラッグ&ドロップ用）
+Future<void> reorderTask(int oldIndex, int newIndex) async {
+  if (oldIndex == newIndex) return;
+
+  final task = _box.getAt(oldIndex);
+  if (task == null) return;
+
+  await _box.deleteAt(oldIndex);
+  final insertIndex = oldIndex < newIndex ? newIndex - 1 : newIndex;
+  await _box.putAt(insertIndex, task);
+
+  // 履歴のタスクキーも更新
+  await _historyRepo.updateTaskKeyAfterReorder(oldIndex, insertIndex);
+}
+```
+
+#### 使用方法
+1. Tasksタブ右上の「並び替え」ボタン（↕アイコン）をタップ
+2. 並び替えモードに入ると、全タスクが表示される
+3. タスクを長押ししてドラッグ
+4. 好きな位置でドロップして順序を変更
+5. キャンセルボタンで通常モードに戻る
+
+#### 技術的詳細
+- **ReorderableListView**: Flutterの標準ウィジェットを使用
+- **データ永続化**: Hiveの`putAt`でタスクの位置を更新
+- **履歴の整合性**: 完了履歴のタスクキーも更新して整合性を保つ
+- **視覚的フィードバック**: ドラッグハンドルアイコンで操作可能を示す
+
+### 2. タスクの複数選択機能
 
 #### UI要素
 - **選択ボタン**: TasksTabの右上に「選択」ボタンを配置
@@ -220,15 +303,16 @@ lib/
 │   └── completion_history_repository.dart  # 履歴キー更新
 ├── providers/
 │   └── providers.dart              # UndoServiceプロバイダー追加
-└── main.dart                       # UI更新（選択モード、Undo統合）
+└── main.dart                       # UI更新（並び替え、選択モード、Undo統合）
 ```
 
 ## 技術的詳細
 
-### 選択モードの状態管理
+### モードの状態管理
+- `_isReorderMode`: 並び替えモードのON/OFF
 - `_isSelectionMode`: 選択モードのON/OFF
 - `_selectedIndices`: 選択されたタスクのインデックスセット
-- 選択モード終了時に自動的にクリア
+- モード切替時に他のモードを自動的にOFFにする
 
 ### Undoスタック管理
 - 最大20個のアクションを保持
@@ -290,6 +374,8 @@ if (undoService.canUndo) {
 - ミスした操作をすぐに取り消せる
 
 ### 視覚的なフィードバック
+- 並び替えモード時にドラッグハンドル表示
+- 並び替え方法の説明カード表示
 - 選択モード時にチェックボックス表示
 - Undoボタンにアクション名を表示
 - スナックバーで操作結果を通知
@@ -297,6 +383,7 @@ if (undoService.canUndo) {
 ## まとめ
 
 操作性向上機能の実装により、以下が可能になりました：
+- ✅ タスクの並び替え（ドラッグ&ドロップ）
 - ✅ タスクの複数選択と一括削除
 - ✅ タスクの複製機能
 - ✅ 削除操作のUndo機能
@@ -304,4 +391,4 @@ if (undoService.canUndo) {
 - ✅ スナックバーからの即座な取り消し
 - ✅ 最大20個の操作履歴を保持
 
-これにより、ユーザーはタスクをより安全かつ効率的に管理できるようになり、ミスを恐れずに操作できるようになりました。
+これにより、ユーザーはタスクを自由に並び替え、より安全かつ効率的に管理できるようになり、ミスを恐れずに操作できるようになりました。
