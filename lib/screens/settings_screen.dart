@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'privacy_settings_screen.dart';
 import 'notification_settings_screen.dart';
 import 'notification_history_screen.dart';
+import 'faq_screen.dart';
+import 'how_to_use_screen.dart';
 
 /// メイン設定画面
 class SettingsScreen extends ConsumerWidget {
@@ -60,6 +62,34 @@ class SettingsScreen extends ConsumerWidget {
               Navigator.of(context).push(
                 MaterialPageRoute<void>(
                   builder: (_) => const PrivacySettingsScreen(),
+                ),
+              );
+            },
+          ),
+          const Divider(),
+
+          // ヘルプとサポートセクション
+          _SectionHeader(title: 'ヘルプとサポート'),
+          ListTile(
+            leading: const Icon(Icons.help_outline),
+            title: const Text('FAQ（よくある質問）'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const FaqScreen(),
+                ),
+              );
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.school_outlined),
+            title: const Text('使い方ガイド'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const HowToUseScreen(),
                 ),
               );
             },

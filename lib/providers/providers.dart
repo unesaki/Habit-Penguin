@@ -8,6 +8,7 @@ import '../repositories/task_repository.dart';
 import '../services/notification_service.dart';
 import '../services/xp_service.dart';
 import '../services/undo_service.dart';
+import '../services/onboarding_service.dart';
 
 /// CompletionHistoryRepositoryのプロバイダー
 final completionHistoryRepositoryProvider =
@@ -42,6 +43,13 @@ final notificationServiceProvider = Provider<NotificationService>((ref) {
 /// Undo/Redo機能を提供
 final undoServiceProvider = ChangeNotifierProvider<UndoService>((ref) {
   return UndoService();
+});
+
+/// OnboardingServiceのプロバイダー
+/// オンボーディング状態を管理
+final onboardingServiceProvider = Provider<OnboardingService>((ref) {
+  final box = Hive.box('appState');
+  return OnboardingService(box);
 });
 
 /// 現在のXPを監視するプロバイダー

@@ -199,4 +199,70 @@ class AppLocalizationsJa extends AppLocalizations {
   String error(String message) {
     return 'エラー: $message';
   }
+
+  @override
+  String get onboardingWelcomeTitle => 'Habit Penguinへようこそ！';
+
+  @override
+  String get onboardingWelcomeDescription =>
+      '楽しく、モチベーションを保ちながらより良い習慣を作りましょう。日々のタスクを記録して、レベルアップしよう！';
+
+  @override
+  String get onboardingFeature1Title => 'XPを獲得してレベルアップ';
+
+  @override
+  String get onboardingFeature1Description =>
+      'タスクを完了すると経験値を獲得できます。難しいタスクほど多くのXPがもらえます！';
+
+  @override
+  String get onboardingFeature1Point1 => 'Easyタスク: 10 XP';
+
+  @override
+  String get onboardingFeature1Point2 => 'Normalタスク: 20 XP';
+
+  @override
+  String get onboardingFeature1Point3 => 'Hardタスク: 30 XP';
+
+  @override
+  String get onboardingFeature2Title => '連続記録を追跡';
+
+  @override
+  String get onboardingFeature2Description =>
+      '毎日タスクを完了して勢いをつけましょう。連続記録を維持してモチベーションを保とう！';
+
+  @override
+  String get onboardingFeature2Point1 => '毎日のタスク完了';
+
+  @override
+  String get onboardingFeature2Point2 => 'カスタマイズ可能なリマインダー';
+
+  @override
+  String get onboardingFeature2Point3 => '完了履歴の記録';
+
+  @override
+  String get onboardingSampleTitle => 'さあ、始めましょう！';
+
+  @override
+  String get onboardingSampleDescription => 'サンプルタスクから始めて、使い方を確認しますか？';
+
+  @override
+  String get onboardingCreateSampleTasks => 'サンプルタスクを作成';
+
+  @override
+  String get onboardingStartFromScratch => 'ゼロから始める';
+
+  @override
+  String get onboardingNext => '次へ';
+
+  @override
+  String get onboardingBack => '戻る';
+
+  @override
+  String get emptyStateTitle => 'タスクを追加して始めましょう';
+
+  @override
+  String get emptyStateDescription => '右下の＋ボタンをタップして、最初の習慣タスクを作成しましょう。';
+
+  @override
+  String get emptyStateCreateTask => '最初のタスクを作成';
 }

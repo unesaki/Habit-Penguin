@@ -14,6 +14,7 @@ import 'models/advanced_notification_settings.dart';
 import 'providers/providers.dart';
 import 'screens/settings_screen.dart';
 import 'screens/advanced_notification_screen.dart';
+import 'screens/onboarding_screen.dart';
 import 'services/migration_service.dart';
 import 'services/monitoring_service.dart';
 import 'services/notification_service.dart';
@@ -143,6 +144,17 @@ class _HabitHomeShellState extends ConsumerState<HabitHomeShell> {
           }
         }
       };
+
+      // 初回起動時にオンボーディング画面を表示
+      final onboardingService = ref.read(onboardingServiceProvider);
+      if (!onboardingService.hasCompletedOnboarding) {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => const OnboardingScreen(),
+            fullscreenDialog: true,
+          ),
+        );
+      }
     });
   }
 
@@ -793,9 +805,14 @@ class _TasksTabState extends ConsumerState<TasksTab> {
                     Text('登録中のタスク', style: Theme.of(context).textTheme.titleMedium),
                     const SizedBox(height: 12),
                     if (openEntries.isEmpty)
-                      Text(
-                        'タスクがまだありません。右下の＋で追加しよう。',
-                        style: Theme.of(context).textTheme.bodyMedium,
+                      _EmptyStateWidget(
+                        onCreateTask: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => const TaskFormPage(),
+                            ),
+                          );
+                        },
                       )
                     else
                       ...backlogEntries.map(
@@ -1945,3 +1962,57 @@ const List<IconData> _iconOptions = [
   Icons.brush,
   Icons.nightlight_round,
 ];
+
+/// 空状態を表示するウィジェット
+class _EmptyStateWidget extends StatelessWidget {
+  const _EmptyStateWidget({required this.onCreateTask});
+
+  final VoidCallback onCreateTask;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.add_task,
+              size: 80,
+              color: theme.colorScheme.primary.withValues(alpha: 0.5),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              l10n?.emptyStateTitle ?? 'Let\'s Add Your First Task',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              l10n?.emptyStateDescription ?? 'Tap the + button at the bottom right to create your first habit task.',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 32),
+            FilledButton.icon(
+              onPressed: onCreateTask,
+              icon: const Icon(Icons.add),
+              label: Text(l10n?.emptyStateCreateTask ?? 'Create First Task'),
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

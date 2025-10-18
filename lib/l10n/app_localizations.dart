@@ -63,7 +63,7 @@ import 'app_localizations_ja.dart';
 /// property.
 abstract class AppLocalizations {
   AppLocalizations(String locale)
-    : localeName = intl.Intl.canonicalizedLocale(locale.toString());
+      : localeName = intl.Intl.canonicalizedLocale(locale.toString());
 
   final String localeName;
 
@@ -86,16 +86,16 @@ abstract class AppLocalizations {
   /// of delegates is preferred or required.
   static const List<LocalizationsDelegate<dynamic>> localizationsDelegates =
       <LocalizationsDelegate<dynamic>>[
-        delegate,
-        GlobalMaterialLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-      ];
+    delegate,
+    GlobalMaterialLocalizations.delegate,
+    GlobalCupertinoLocalizations.delegate,
+    GlobalWidgetsLocalizations.delegate,
+  ];
 
   /// A list of this localizations delegate's supported locales.
   static const List<Locale> supportedLocales = <Locale>[
     Locale('en'),
-    Locale('ja'),
+    Locale('ja')
   ];
 
   /// アプリケーションのタイトル
@@ -457,6 +457,132 @@ abstract class AppLocalizations {
   /// In ja, this message translates to:
   /// **'エラー: {message}'**
   String error(String message);
+
+  /// オンボーディング：ウェルカムタイトル
+  ///
+  /// In ja, this message translates to:
+  /// **'Habit Penguinへようこそ！'**
+  String get onboardingWelcomeTitle;
+
+  /// オンボーディング：ウェルカム説明
+  ///
+  /// In ja, this message translates to:
+  /// **'楽しく、モチベーションを保ちながらより良い習慣を作りましょう。日々のタスクを記録して、レベルアップしよう！'**
+  String get onboardingWelcomeDescription;
+
+  /// オンボーディング：機能1タイトル
+  ///
+  /// In ja, this message translates to:
+  /// **'XPを獲得してレベルアップ'**
+  String get onboardingFeature1Title;
+
+  /// オンボーディング：機能1説明
+  ///
+  /// In ja, this message translates to:
+  /// **'タスクを完了すると経験値を獲得できます。難しいタスクほど多くのXPがもらえます！'**
+  String get onboardingFeature1Description;
+
+  /// オンボーディング：機能1ポイント1
+  ///
+  /// In ja, this message translates to:
+  /// **'Easyタスク: 10 XP'**
+  String get onboardingFeature1Point1;
+
+  /// オンボーディング：機能1ポイント2
+  ///
+  /// In ja, this message translates to:
+  /// **'Normalタスク: 20 XP'**
+  String get onboardingFeature1Point2;
+
+  /// オンボーディング：機能1ポイント3
+  ///
+  /// In ja, this message translates to:
+  /// **'Hardタスク: 30 XP'**
+  String get onboardingFeature1Point3;
+
+  /// オンボーディング：機能2タイトル
+  ///
+  /// In ja, this message translates to:
+  /// **'連続記録を追跡'**
+  String get onboardingFeature2Title;
+
+  /// オンボーディング：機能2説明
+  ///
+  /// In ja, this message translates to:
+  /// **'毎日タスクを完了して勢いをつけましょう。連続記録を維持してモチベーションを保とう！'**
+  String get onboardingFeature2Description;
+
+  /// オンボーディング：機能2ポイント1
+  ///
+  /// In ja, this message translates to:
+  /// **'毎日のタスク完了'**
+  String get onboardingFeature2Point1;
+
+  /// オンボーディング：機能2ポイント2
+  ///
+  /// In ja, this message translates to:
+  /// **'カスタマイズ可能なリマインダー'**
+  String get onboardingFeature2Point2;
+
+  /// オンボーディング：機能2ポイント3
+  ///
+  /// In ja, this message translates to:
+  /// **'完了履歴の記録'**
+  String get onboardingFeature2Point3;
+
+  /// オンボーディング：サンプルタイトル
+  ///
+  /// In ja, this message translates to:
+  /// **'さあ、始めましょう！'**
+  String get onboardingSampleTitle;
+
+  /// オンボーディング：サンプル説明
+  ///
+  /// In ja, this message translates to:
+  /// **'サンプルタスクから始めて、使い方を確認しますか？'**
+  String get onboardingSampleDescription;
+
+  /// オンボーディング：サンプル作成ボタン
+  ///
+  /// In ja, this message translates to:
+  /// **'サンプルタスクを作成'**
+  String get onboardingCreateSampleTasks;
+
+  /// オンボーディング：ゼロから始めるボタン
+  ///
+  /// In ja, this message translates to:
+  /// **'ゼロから始める'**
+  String get onboardingStartFromScratch;
+
+  /// オンボーディング：次へボタン
+  ///
+  /// In ja, this message translates to:
+  /// **'次へ'**
+  String get onboardingNext;
+
+  /// オンボーディング：戻るボタン
+  ///
+  /// In ja, this message translates to:
+  /// **'戻る'**
+  String get onboardingBack;
+
+  /// 空状態：タイトル
+  ///
+  /// In ja, this message translates to:
+  /// **'タスクを追加して始めましょう'**
+  String get emptyStateTitle;
+
+  /// 空状態：説明
+  ///
+  /// In ja, this message translates to:
+  /// **'右下の＋ボタンをタップして、最初の習慣タスクを作成しましょう。'**
+  String get emptyStateDescription;
+
+  /// 空状態：タスク作成ボタン
+  ///
+  /// In ja, this message translates to:
+  /// **'最初のタスクを作成'**
+  String get emptyStateCreateTask;
 }
 
 class _AppLocalizationsDelegate
@@ -486,9 +612,8 @@ AppLocalizations lookupAppLocalizations(Locale locale) {
   }
 
   throw FlutterError(
-    'AppLocalizations.delegate failed to load unsupported locale "$locale". This is likely '
-    'an issue with the localizations generation tool. Please file an issue '
-    'on GitHub with a reproducible sample app and the gen-l10n configuration '
-    'that was used.',
-  );
+      'AppLocalizations.delegate failed to load unsupported locale "$locale". This is likely '
+      'an issue with the localizations generation tool. Please file an issue '
+      'on GitHub with a reproducible sample app and the gen-l10n configuration '
+      'that was used.');
 }

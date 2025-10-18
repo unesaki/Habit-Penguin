@@ -335,5 +335,110 @@
         "example": "データの読み込みに失敗しました"
       }
     }
+  },
+
+  "onboardingWelcomeTitle": "Habit Penguinへようこそ！",
+  "@onboardingWelcomeTitle": {
+    "description": "オンボーディング：ウェルカムタイトル"
+  },
+
+  "onboardingWelcomeDescription": "楽しく、モチベーションを保ちながらより良い習慣を作りましょう。日々のタスクを記録して、レベルアップしよう！",
+  "@onboardingWelcomeDescription": {
+    "description": "オンボーディング：ウェルカム説明"
+  },
+
+  "onboardingFeature1Title": "XPを獲得してレベルアップ",
+  "@onboardingFeature1Title": {
+    "description": "オンボーディング：機能1タイトル"
+  },
+
+  "onboardingFeature1Description": "タスクを完了すると経験値を獲得できます。難しいタスクほど多くのXPがもらえます！",
+  "@onboardingFeature1Description": {
+    "description": "オンボーディング：機能1説明"
+  },
+
+  "onboardingFeature1Point1": "Easyタスク: 10 XP",
+  "@onboardingFeature1Point1": {
+    "description": "オンボーディング：機能1ポイント1"
+  },
+
+  "onboardingFeature1Point2": "Normalタスク: 20 XP",
+  "@onboardingFeature1Point2": {
+    "description": "オンボーディング：機能1ポイント2"
+  },
+
+  "onboardingFeature1Point3": "Hardタスク: 30 XP",
+  "@onboardingFeature1Point3": {
+    "description": "オンボーディング：機能1ポイント3"
+  },
+
+  "onboardingFeature2Title": "連続記録を追跡",
+  "@onboardingFeature2Title": {
+    "description": "オンボーディング：機能2タイトル"
+  },
+
+  "onboardingFeature2Description": "毎日タスクを完了して勢いをつけましょう。連続記録を維持してモチベーションを保とう！",
+  "@onboardingFeature2Description": {
+    "description": "オンボーディング：機能2説明"
+  },
+
+  "onboardingFeature2Point1": "毎日のタスク完了",
+  "@onboardingFeature2Point1": {
+    "description": "オンボーディング：機能2ポイント1"
+  },
+
+  "onboardingFeature2Point2": "カスタマイズ可能なリマインダー",
+  "@onboardingFeature2Point2": {
+    "description": "オンボーディング：機能2ポイント2"
+  },
+
+  "onboardingFeature2Point3": "完了履歴の記録",
+  "@onboardingFeature2Point3": {
+    "description": "オンボーディング：機能2ポイント3"
+  },
+
+  "onboardingSampleTitle": "さあ、始めましょう！",
+  "@onboardingSampleTitle": {
+    "description": "オンボーディング：サンプルタイトル"
+  },
+
+  "onboardingSampleDescription": "サンプルタスクから始めて、使い方を確認しますか？",
+  "@onboardingSampleDescription": {
+    "description": "オンボーディング：サンプル説明"
+  },
+
+  "onboardingCreateSampleTasks": "サンプルタスクを作成",
+  "@onboardingCreateSampleTasks": {
+    "description": "オンボーディング：サンプル作成ボタン"
+  },
+
+  "onboardingStartFromScratch": "ゼロから始める",
+  "@onboardingStartFromScratch": {
+    "description": "オンボーディング：ゼロから始めるボタン"
+  },
+
+  "onboardingNext": "次へ",
+  "@onboardingNext": {
+    "description": "オンボーディング：次へボタン"
+  },
+
+  "onboardingBack": "戻る",
+  "@onboardingBack": {
+    "description": "オンボーディング：戻るボタン"
+  },
+
+  "emptyStateTitle": "タスクを追加して始めましょう",
+  "@emptyStateTitle": {
+    "description": "空状態：タイトル"
+  },
+
+  "emptyStateDescription": "右下の＋ボタンをタップして、最初の習慣タスクを作成しましょう。",
+  "@emptyStateDescription": {
+    "description": "空状態：説明"
+  },
+
+  "emptyStateCreateTask": "最初のタスクを作成",
+  "@emptyStateCreateTask": {
+    "description": "空状態：タスク作成ボタン"
   }
 }

@@ -202,4 +202,72 @@ class AppLocalizationsEn extends AppLocalizations {
   String error(String message) {
     return 'Error: $message';
   }
+
+  @override
+  String get onboardingWelcomeTitle => 'Welcome to Habit Penguin!';
+
+  @override
+  String get onboardingWelcomeDescription =>
+      'Build better habits with fun and motivation. Track your daily tasks and level up!';
+
+  @override
+  String get onboardingFeature1Title => 'Earn XP & Level Up';
+
+  @override
+  String get onboardingFeature1Description =>
+      'Complete tasks to earn experience points. The harder the task, the more XP you get!';
+
+  @override
+  String get onboardingFeature1Point1 => 'Easy tasks: 10 XP';
+
+  @override
+  String get onboardingFeature1Point2 => 'Medium tasks: 20 XP';
+
+  @override
+  String get onboardingFeature1Point3 => 'Hard tasks: 30 XP';
+
+  @override
+  String get onboardingFeature2Title => 'Track Your Streaks';
+
+  @override
+  String get onboardingFeature2Description =>
+      'Build momentum by completing tasks every day. Maintain your streak to stay motivated!';
+
+  @override
+  String get onboardingFeature2Point1 => 'Daily task completion';
+
+  @override
+  String get onboardingFeature2Point2 => 'Customizable reminders';
+
+  @override
+  String get onboardingFeature2Point3 => 'Completion history';
+
+  @override
+  String get onboardingSampleTitle => 'Ready to Start?';
+
+  @override
+  String get onboardingSampleDescription =>
+      'Would you like to start with sample tasks to see how it works?';
+
+  @override
+  String get onboardingCreateSampleTasks => 'Create Sample Tasks';
+
+  @override
+  String get onboardingStartFromScratch => 'Start from Scratch';
+
+  @override
+  String get onboardingNext => 'Next';
+
+  @override
+  String get onboardingBack => 'Back';
+
+  @override
+  String get emptyStateTitle => 'Let\'s Add Your First Task';
+
+  @override
+  String get emptyStateDescription =>
+      'Tap the + button at the bottom right to create your first habit task.';
+
+  @override
+  String get emptyStateCreateTask => 'Create First Task';
 }
