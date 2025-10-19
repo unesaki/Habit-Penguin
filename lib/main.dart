@@ -180,7 +180,6 @@ class _HabitHomeShellState extends ConsumerState<HabitHomeShell> {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
     final tabTitles = ['タスク一覧', '', 'ペンギンの部屋'];
     return Scaffold(
       appBar: _currentIndex == 1
@@ -843,10 +842,11 @@ class _TasksTabState extends ConsumerState<TasksTab> {
                               if (undoService.canUndo)
                                 TextButton.icon(
                                   onPressed: () async {
+                                    final messenger =
+                                        ScaffoldMessenger.of(context);
                                     await undoService.undo();
                                     if (mounted) {
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(
+                                      messenger.showSnackBar(
                                         SnackBar(
                                           content: Text(
                                               '「${undoService.lastActionDescription ?? "操作"}」を取り消しました'),
@@ -963,16 +963,13 @@ class _TasksTabState extends ConsumerState<TasksTab> {
                                 (index) => index,
                               )..remove(oldTaskIndex);
 
-                              int? computedNewIndex;
+                              int computedNewIndex;
                               if (newPosition + 1 < orderedKeys.length) {
                                 final nextKey = orderedKeys[newPosition + 1];
                                 final idx = allIndices.indexOf(nextKey);
                                 if (idx != -1) {
                                   computedNewIndex = idx;
-                                }
-                              }
-                              if (computedNewIndex == null) {
-                                if (newPosition == 0) {
+                                } else if (newPosition == 0) {
                                   computedNewIndex = 0;
                                 } else {
                                   final prevKey = orderedKeys[newPosition - 1];
@@ -981,10 +978,18 @@ class _TasksTabState extends ConsumerState<TasksTab> {
                                       ? allIndices.length
                                       : prevIdx + 1;
                                 }
+                              } else if (newPosition == 0) {
+                                computedNewIndex = 0;
+                              } else {
+                                final prevKey = orderedKeys[newPosition - 1];
+                                final prevIdx = allIndices.indexOf(prevKey);
+                                computedNewIndex = prevIdx == -1
+                                    ? allIndices.length
+                                    : prevIdx + 1;
                               }
 
                               taskRepository
-                                  .reorderTask(oldTaskIndex, computedNewIndex!)
+                                  .reorderTask(oldTaskIndex, computedNewIndex)
                                   .whenComplete(() {
                                 if (mounted) {
                                   setState(() {
@@ -1298,7 +1303,6 @@ class _TaskFormPageState extends ConsumerState<TaskFormPage> {
   @override
   Widget build(BuildContext context) {
     final isEditing = widget.taskIndex != null;
-    final theme = Theme.of(context);
     return Scaffold(
       backgroundColor: const Color(0xFFF6F6F6),
       appBar: AppBar(
@@ -1341,7 +1345,7 @@ class _TaskFormPageState extends ConsumerState<TaskFormPage> {
                                   hintText: 'どんな習慣をつくる?',
                                   hintStyle: TextStyle(
                                     color: const Color(0xFF333333)
-                                        .withOpacity(0.4),
+                                        .withValues(alpha: 0.4),
                                   ),
                                   labelStyle: const TextStyle(
                                     color: Color(0xFF333333),
@@ -1480,7 +1484,8 @@ class _TaskFormPageState extends ConsumerState<TaskFormPage> {
                               labelText: 'メモ',
                               hintText: 'このタスクについてメモしておこう',
                               hintStyle: TextStyle(
-                                color: const Color(0xFF333333).withOpacity(0.4),
+                                color: const Color(0xFF333333)
+                                    .withValues(alpha: 0.4),
                               ),
                               labelStyle: const TextStyle(
                                 color: Color(0xFF333333),
@@ -1510,7 +1515,7 @@ class _TaskFormPageState extends ConsumerState<TaskFormPage> {
                                   ),
                                   Switch(
                                     value: _isRepeating,
-                                    activeColor: const Color(0xFFFFD79E),
+                                    activeTrackColor: const Color(0xFFFFD79E),
                                     onChanged: (value) {
                                       setState(() {
                                         _isRepeating = value;
@@ -1585,7 +1590,7 @@ class _TaskFormPageState extends ConsumerState<TaskFormPage> {
                                   ),
                                   Switch(
                                     value: _reminderEnabled,
-                                    activeColor: const Color(0xFFFFD79E),
+                                    activeTrackColor: const Color(0xFFFFD79E),
                                     onChanged: (value) {
                                       setState(() {
                                         _reminderEnabled = value;
@@ -1876,45 +1881,6 @@ class _TaskFormPageState extends ConsumerState<TaskFormPage> {
       DateTime(date.year, date.month, date.day);
 }
 
-class _FormSection extends StatelessWidget {
-  const _FormSection({required this.title, required this.child});
-
-  final String title;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: theme.colorScheme.shadow.withValues(alpha: 0.05),
-            blurRadius: 16,
-            offset: const Offset(0, 12),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 16),
-          child,
-        ],
-      ),
-    );
-  }
-}
-
 class _BrandFormSection extends StatelessWidget {
   const _BrandFormSection({required this.child});
 
@@ -1929,7 +1895,7 @@ class _BrandFormSection extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -1987,43 +1953,6 @@ class _BrandDateActionRow extends StatelessWidget {
   }
 }
 
-class _DateActionRow extends StatelessWidget {
-  const _DateActionRow({
-    required this.label,
-    required this.value,
-    required this.onTap,
-  });
-
-  final String label;
-  final String value;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return OutlinedButton(
-      style: OutlinedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      ),
-      onPressed: onTap,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: theme.textTheme.bodyMedium),
-          Text(
-            value,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.primary,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _TaskListTile extends ConsumerWidget {
   const _TaskListTile({
     required this.task,
@@ -2069,7 +1998,7 @@ class _TaskListTile extends ConsumerWidget {
                 : null,
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.04),
+                color: Colors.black.withValues(alpha: 0.04),
                 blurRadius: 12,
                 offset: const Offset(0, 4),
               ),
@@ -2367,16 +2296,6 @@ String _difficultyLabel(TaskDifficulty difficulty) {
     case TaskDifficulty.hard:
       return 'Hard';
   }
-}
-
-String _scheduleLabel(HabitTask task) {
-  if (task.isRepeating && task.repeatStart != null && task.repeatEnd != null) {
-    return '${_formatDateLabel(task.repeatStart!)} 〜 ${_formatDateLabel(task.repeatEnd!)}';
-  }
-  if (task.scheduledDate != null) {
-    return _formatDateLabel(task.scheduledDate!);
-  }
-  return 'いつでも';
 }
 
 String _formatDateLabel(DateTime date) {

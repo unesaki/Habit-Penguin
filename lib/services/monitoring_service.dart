@@ -129,12 +129,12 @@ class MonitoringService {
   /// [id]: ユーザーID（オプション）
   /// [email]: メールアドレス（オプション）
   /// [username]: ユーザー名（オプション）
-  /// [extras]: 追加情報（オプション）
+  /// [data]: 追加情報（オプション）
   Future<void> setUser({
     String? id,
     String? email,
     String? username,
-    Map<String, dynamic>? extras,
+    Map<String, dynamic>? data,
   }) async {
     if (!_isInitialized) return;
 
@@ -144,7 +144,7 @@ class MonitoringService {
           id: id,
           email: email,
           username: username,
-          extras: extras,
+          data: data,
         ));
       });
     } catch (e) {

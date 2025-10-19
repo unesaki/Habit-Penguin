@@ -40,13 +40,15 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   }
 
   Future<void> _completeOnboarding({bool createSampleTasks = false}) async {
+    final locale = Localizations.localeOf(context);
+    final navigator = Navigator.of(context);
+
     final onboardingService = ref.read(onboardingServiceProvider);
     await onboardingService.completeOnboarding();
 
     if (createSampleTasks) {
       final taskRepository = ref.read(taskRepositoryProvider);
       final sampleTasksService = SampleTasksService(taskRepository);
-      final locale = Localizations.localeOf(context);
 
       if (locale.languageCode == 'ja') {
         await sampleTasksService.createSampleTasksJa();
@@ -56,7 +58,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     }
 
     if (!mounted) return;
-    Navigator.of(context).pop();
+    navigator.pop();
   }
 
   @override
