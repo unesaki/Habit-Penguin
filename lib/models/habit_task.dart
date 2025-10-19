@@ -83,9 +83,6 @@ class HabitTask extends HiveObject {
     TimeOfDay? reminderTime,
     String? memo,
     bool? isRepeating,
-    bool? isCompleted,
-    DateTime? completedAt,
-    int? completionXp,
   }) {
     final shouldRepeat = isRepeating ?? this.isRepeating;
     return HabitTask(
@@ -99,9 +96,12 @@ class HabitTask extends HiveObject {
       repeatEnd: shouldRepeat ? (repeatEnd ?? this.repeatEnd) : null,
       reminderTime: reminderTime ?? this.reminderTime,
       memo: memo ?? this.memo,
-      isCompleted: isCompleted ?? this.isCompleted,
-      completedAt: completedAt ?? this.completedAt,
-      completionXp: completionXp ?? this.completionXp,
+      // ignore: deprecated_member_use_from_same_package
+      isCompleted: isCompleted,
+      // ignore: deprecated_member_use_from_same_package
+      completedAt: completedAt,
+      // ignore: deprecated_member_use_from_same_package
+      completionXp: completionXp,
     );
   }
 }
@@ -159,8 +159,11 @@ class HabitTaskAdapter extends TypeAdapter<HabitTask> {
       repeatEnd: readDate(fields[6]),
       reminderTime: _readTimeOfDay(fields[10]),
       memo: (fields[11] as String?) ?? '',
+      // ignore: deprecated_member_use_from_same_package
       isCompleted: (fields[7] as bool?) ?? false,
+      // ignore: deprecated_member_use_from_same_package
       completedAt: readDate(fields[8]),
+      // ignore: deprecated_member_use_from_same_package
       completionXp: (fields[9] as int?) ?? 0,
     );
   }
@@ -184,10 +187,13 @@ class HabitTaskAdapter extends TypeAdapter<HabitTask> {
       ..writeByte(6)
       ..write(obj.repeatEnd)
       ..writeByte(7)
+      // ignore: deprecated_member_use_from_same_package
       ..write(obj.isCompleted)
       ..writeByte(8)
+      // ignore: deprecated_member_use_from_same_package
       ..write(obj.completedAt)
       ..writeByte(9)
+      // ignore: deprecated_member_use_from_same_package
       ..write(obj.completionXp ?? 0)
       ..writeByte(10)
       ..write(_writeTimeOfDay(obj.reminderTime))

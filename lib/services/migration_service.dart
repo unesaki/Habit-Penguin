@@ -56,11 +56,14 @@ class MigrationService {
 
       // isCompletedがtrueの場合、履歴に追加
       // ignore: deprecated_member_use_from_same_package
-      if (task.isCompleted && task.completedAt != null) {
+      if (task.isCompleted &&
+          // ignore: deprecated_member_use_from_same_package
+          task.completedAt != null) {
         // 履歴に既に存在しないかチェック
         final alreadyExists = historyBox.values.any(
           (h) =>
               h.taskKey == i &&
+              // ignore: deprecated_member_use_from_same_package
               h.completedAt.difference(task.completedAt!).inSeconds.abs() < 60,
         );
 

@@ -95,47 +95,36 @@ class _NotificationSettingsScreenState
             context,
             title: '通知の優先度',
             children: [
-              RadioListTile<String>(
-                title: const Text('高'),
-                subtitle: const Text('すぐに表示され、音が鳴ります'),
-                value: 'high',
+              RadioGroup<String>(
                 groupValue: _notificationPriority,
                 onChanged: (value) {
-                  if (value != null) {
-                    setState(() {
-                      _notificationPriority = value;
-                    });
-                    _saveSetting('notification_priority', value);
+                  if (value == null) {
+                    return;
                   }
+                  setState(() {
+                    _notificationPriority = value;
+                  });
+                  _saveSetting('notification_priority', value);
                 },
-              ),
-              RadioListTile<String>(
-                title: const Text('標準'),
-                subtitle: const Text('通常の通知として表示されます'),
-                value: 'default',
-                groupValue: _notificationPriority,
-                onChanged: (value) {
-                  if (value != null) {
-                    setState(() {
-                      _notificationPriority = value;
-                    });
-                    _saveSetting('notification_priority', value);
-                  }
-                },
-              ),
-              RadioListTile<String>(
-                title: const Text('低'),
-                subtitle: const Text('静かに通知バーに表示されます'),
-                value: 'low',
-                groupValue: _notificationPriority,
-                onChanged: (value) {
-                  if (value != null) {
-                    setState(() {
-                      _notificationPriority = value;
-                    });
-                    _saveSetting('notification_priority', value);
-                  }
-                },
+                child: Column(
+                  children: [
+                    RadioListTile<String>(
+                      title: const Text('高'),
+                      subtitle: const Text('すぐに表示され、音が鳴ります'),
+                      value: 'high',
+                    ),
+                    RadioListTile<String>(
+                      title: const Text('標準'),
+                      subtitle: const Text('通常の通知として表示されます'),
+                      value: 'default',
+                    ),
+                    RadioListTile<String>(
+                      title: const Text('低'),
+                      subtitle: const Text('静かに通知バーに表示されます'),
+                      value: 'low',
+                    ),
+                  ],
+                ),
               ),
             ],
           ),

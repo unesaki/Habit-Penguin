@@ -168,8 +168,5 @@ bool _habitTasksStructurallyEqual(HabitTask a, HabitTask b) {
       a.repeatStart == b.repeatStart &&
       a.repeatEnd == b.repeatEnd &&
       a.reminderTime == b.reminderTime &&
-      a.memo == b.memo &&
-      a.isCompleted == b.isCompleted &&
-      a.completedAt == b.completedAt &&
-      a.completionXp == b.completionXp;
+      a.memo == b.memo;
 }

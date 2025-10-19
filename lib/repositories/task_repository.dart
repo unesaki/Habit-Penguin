@@ -166,16 +166,6 @@ class TaskRepository {
       earnedXp: xpGained,
     );
     await _historyRepo.addCompletion(completion);
-
-    // 単発タスクの場合は、マイグレーション用にisCompletedも設定
-    // （将来的には削除予定）
-    if (!task.isRepeating) {
-      task
-        ..isCompleted = true
-        ..completedAt = DateTime.now()
-        ..completionXp = xpGained;
-      await task.save();
-    }
   }
 
   /// タスクの完了を取り消す（今日の完了履歴を削除）
