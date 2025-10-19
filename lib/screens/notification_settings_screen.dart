@@ -1,3 +1,5 @@
+// ignore_for_file: deprecated_member_use
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive/hive.dart';
@@ -95,36 +97,47 @@ class _NotificationSettingsScreenState
             context,
             title: '通知の優先度',
             children: [
-              RadioGroup<String>(
+              RadioListTile<String>(
+                title: const Text('高'),
+                subtitle: const Text('すぐに表示され、音が鳴ります'),
+                value: 'high',
                 groupValue: _notificationPriority,
                 onChanged: (value) {
-                  if (value == null) {
-                    return;
+                  if (value != null) {
+                    setState(() {
+                      _notificationPriority = value;
+                    });
+                    _saveSetting('notification_priority', value);
                   }
-                  setState(() {
-                    _notificationPriority = value;
-                  });
-                  _saveSetting('notification_priority', value);
                 },
-                child: Column(
-                  children: [
-                    RadioListTile<String>(
-                      title: const Text('高'),
-                      subtitle: const Text('すぐに表示され、音が鳴ります'),
-                      value: 'high',
-                    ),
-                    RadioListTile<String>(
-                      title: const Text('標準'),
-                      subtitle: const Text('通常の通知として表示されます'),
-                      value: 'default',
-                    ),
-                    RadioListTile<String>(
-                      title: const Text('低'),
-                      subtitle: const Text('静かに通知バーに表示されます'),
-                      value: 'low',
-                    ),
-                  ],
-                ),
+              ),
+              RadioListTile<String>(
+                title: const Text('標準'),
+                subtitle: const Text('通常の通知として表示されます'),
+                value: 'default',
+                groupValue: _notificationPriority,
+                onChanged: (value) {
+                  if (value != null) {
+                    setState(() {
+                      _notificationPriority = value;
+                    });
+                    _saveSetting('notification_priority', value);
+                  }
+                },
+              ),
+              RadioListTile<String>(
+                title: const Text('低'),
+                subtitle: const Text('静かに通知バーに表示されます'),
+                value: 'low',
+                groupValue: _notificationPriority,
+                onChanged: (value) {
+                  if (value != null) {
+                    setState(() {
+                      _notificationPriority = value;
+                    });
+                    _saveSetting('notification_priority', value);
+                  }
+                },
               ),
             ],
           ),
