@@ -31,7 +31,8 @@
 - [security_audit.md](security_audit.md) - セキュリティ監査
 - [testing_guide.md](testing_guide.md) - テスト
 - [ci_cd_monitoring.md](ci_cd_monitoring.md) - CI/CD
-- [onboarding_implementation.md](onboarding_implementation.md) - オンボーディング（NEW!）
+- [onboarding_implementation.md](onboarding_implementation.md) - オンボーディング
+- [app_branding.md](app_branding.md) - アイコンとスプラッシュスクリーン（NEW!）
 
 ---
 
@@ -83,14 +84,18 @@
 **優先度: 低**
 
 **対応内容:**
-- [ ] プロダクション品質のアセット作成
-  - アプリアイコンの最終版
-  - スプラッシュスクリーン
-  - ストア用のスクリーンショットとプロモーション画像
+- [x] ✅ **完了！** プロダクション品質のアセット作成
+  - ✅ アプリアイコン（160x160）
+  - ✅ スプラッシュスクリーン（1024x1536）
+  - ✅ Android/iOS用の複数解像度アイコン自動生成
+  - ✅ ダークモード対応スプラッシュスクリーン
+  - [ ] ストア用のスクリーンショットとプロモーション画像（残り）
 - [ ] ペンギンキャラクターの拡充
   - 複数の表情・アニメーション
   - ストーリー性のある演出
 - [ ] ブランドガイドラインの作成
+
+**詳細:** [app_branding.md](app_branding.md)
 
 ---
 
