@@ -68,7 +68,7 @@ final allTasksProvider = StreamProvider<List<HabitTask>>((ref) {
 
   return Stream.periodic(const Duration(milliseconds: 100))
       .asyncMap((_) => repository.getAllTasks())
-      .distinct((prev, next) => prev.length == next.length);
+      .distinct(_habitTaskListsEqual);
 });
 
 /// 未完了タスク（インデックス付き）を取得するプロバイダー
@@ -78,7 +78,7 @@ final openTasksProvider =
 
   return Stream.periodic(const Duration(milliseconds: 100))
       .asyncMap((_) => repository.getOpenTasksWithIndex())
-      .distinct((prev, next) => prev.length == next.length);
+      .distinct(_indexedTaskEntriesEqual);
 });
 
 /// 完了済みタスクを履歴とともに取得するプロバイダー
@@ -99,7 +99,7 @@ final todayActiveTasksProvider =
 
   return Stream.periodic(const Duration(milliseconds: 100))
       .asyncMap((_) => repository.getActiveTasksOn(today, excludeCompleted: true))
-      .distinct((prev, next) => prev.length == next.length);
+      .distinct(_indexedTaskEntriesEqual);
 });
 
 /// 特定のタスクのストリークを取得するプロバイダー
@@ -115,3 +115,63 @@ final taskMaxStreakProvider =
   final historyRepo = ref.watch(completionHistoryRepositoryProvider);
   return historyRepo.calculateMaxStreak(taskKey);
 });
+
+bool _habitTaskListsEqual(List<HabitTask> previous, List<HabitTask> next) {
+  if (identical(previous, next)) {
+    return true;
+  }
+  if (previous.length != next.length) {
+    return false;
+  }
+
+  for (var i = 0; i < previous.length; i++) {
+    if (!_habitTasksStructurallyEqual(previous[i], next[i])) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool _indexedTaskEntriesEqual(
+  List<MapEntry<int, HabitTask>> previous,
+  List<MapEntry<int, HabitTask>> next,
+) {
+  if (identical(previous, next)) {
+    return true;
+  }
+  if (previous.length != next.length) {
+    return false;
+  }
+
+  for (var i = 0; i < previous.length; i++) {
+    final prevEntry = previous[i];
+    final nextEntry = next[i];
+
+    if (prevEntry.key != nextEntry.key) {
+      return false;
+    }
+    if (!_habitTasksStructurallyEqual(prevEntry.value, nextEntry.value)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool _habitTasksStructurallyEqual(HabitTask a, HabitTask b) {
+  if (identical(a, b)) {
+    return true;
+  }
+
+  return a.name == b.name &&
+      a.iconCodePoint == b.iconCodePoint &&
+      a.reminderEnabled == b.reminderEnabled &&
+      a.difficulty == b.difficulty &&
+      a.scheduledDate == b.scheduledDate &&
+      a.repeatStart == b.repeatStart &&
+      a.repeatEnd == b.repeatEnd &&
+      a.reminderTime == b.reminderTime &&
+      a.memo == b.memo &&
+      a.isCompleted == b.isCompleted &&
+      a.completedAt == b.completedAt &&
+      a.completionXp == b.completionXp;
+}

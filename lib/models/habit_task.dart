@@ -12,6 +12,7 @@ class HabitTask extends HiveObject {
     this.repeatStart,
     this.repeatEnd,
     this.reminderTime,
+    this.memo = '',
     @Deprecated('Use TaskCompletionHistory instead') this.isCompleted = false,
     @Deprecated('Use TaskCompletionHistory instead') this.completedAt,
     @Deprecated('Use TaskCompletionHistory instead') this.completionXp,
@@ -25,6 +26,7 @@ class HabitTask extends HiveObject {
   DateTime? repeatStart;
   DateTime? repeatEnd;
   TimeOfDay? reminderTime;
+  String memo;
 
   /// 非推奨: 履歴ベースの完了管理に移行しました
   /// マイグレーション用に残しています
@@ -79,6 +81,7 @@ class HabitTask extends HiveObject {
     DateTime? repeatStart,
     DateTime? repeatEnd,
     TimeOfDay? reminderTime,
+    String? memo,
     bool? isRepeating,
     bool? isCompleted,
     DateTime? completedAt,
@@ -96,6 +99,7 @@ class HabitTask extends HiveObject {
       repeatStart: shouldRepeat ? (repeatStart ?? this.repeatStart) : null,
       repeatEnd: shouldRepeat ? (repeatEnd ?? this.repeatEnd) : null,
       reminderTime: reminderTime ?? this.reminderTime,
+      memo: memo ?? this.memo,
       isCompleted: isCompleted ?? this.isCompleted,
       completedAt: completedAt ?? this.completedAt,
       completionXp: completionXp ?? this.completionXp,
@@ -155,6 +159,7 @@ class HabitTaskAdapter extends TypeAdapter<HabitTask> {
       repeatStart: readDate(fields[5]),
       repeatEnd: readDate(fields[6]),
       reminderTime: _readTimeOfDay(fields[10]),
+      memo: (fields[11] as String?) ?? '',
       isCompleted: (fields[7] as bool?) ?? false,
       completedAt: readDate(fields[8]),
       completionXp: (fields[9] as int?) ?? 0,
@@ -164,7 +169,7 @@ class HabitTaskAdapter extends TypeAdapter<HabitTask> {
   @override
   void write(BinaryWriter writer, HabitTask obj) {
     writer
-      ..writeByte(11)
+      ..writeByte(12)
       ..writeByte(0)
       ..write(obj.name)
       ..writeByte(1)
@@ -186,6 +191,8 @@ class HabitTaskAdapter extends TypeAdapter<HabitTask> {
       ..writeByte(9)
       ..write(obj.completionXp ?? 0)
       ..writeByte(10)
-      ..write(_writeTimeOfDay(obj.reminderTime));
+      ..write(_writeTimeOfDay(obj.reminderTime))
+      ..writeByte(11)
+      ..write(obj.memo);
   }
 }
