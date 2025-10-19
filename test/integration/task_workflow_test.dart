@@ -32,8 +32,7 @@ void main() {
     await Hive.openBox<TaskCompletionHistory>('completion_history');
     await Hive.openBox('appState');
     notificationService = NotificationService.test();
-    await Hive.box('appState')
-        .put('hasCompletedOnboarding', true);
+    await Hive.box('appState').put('hasCompletedOnboarding', true);
   });
 
   tearDown(() async {
@@ -60,13 +59,16 @@ void main() {
   }
 
   Finder _taskFormSubmitButton() {
-    return find.descendant(
-      of: find.byType(TaskFormPage),
-      matching: find.text('タスクを作成'),
-    ).last;
+    return find
+        .descendant(
+          of: find.byType(TaskFormPage),
+          matching: find.text('タスクを作成'),
+        )
+        .last;
   }
 
-  Future<void> _selectDateField(WidgetTester tester, List<String> labels) async {
+  Future<void> _selectDateField(
+      WidgetTester tester, List<String> labels) async {
     Finder? labelFinder;
     for (final label in labels) {
       final candidate = find.descendant(
@@ -109,7 +111,8 @@ void main() {
       await _pumpFrames(tester);
 
       // Enter task name
-      await tester.enterText(find.byType(TextFormField).first, 'Morning Exercise');
+      await tester.enterText(
+          find.byType(TextFormField).first, 'Morning Exercise');
       await _pumpFrames(tester);
 
       // Select difficulty (Hard)
@@ -159,7 +162,8 @@ void main() {
       await _pumpFrames(tester);
 
       // Enter task name
-      await tester.enterText(find.byType(TextFormField).first, 'Daily Meditation');
+      await tester.enterText(
+          find.byType(TextFormField).first, 'Daily Meditation');
       await _pumpFrames(tester);
 
       // Enable repeating toggle
@@ -363,7 +367,8 @@ void main() {
       await tester.tap(find.byTooltip('Add Task'));
       await _pumpFrames(tester);
 
-      await tester.enterText(find.byType(TextFormField).first, 'Task to Delete');
+      await tester.enterText(
+          find.byType(TextFormField).first, 'Task to Delete');
       await _pumpFrames(tester);
 
       await tester.tap(find.text('未選択').first);
@@ -405,7 +410,8 @@ void main() {
       await tester.tap(find.byTooltip('Add Task'));
       await _pumpFrames(tester);
 
-      await tester.enterText(find.byType(TextFormField).first, 'Persistent Task');
+      await tester.enterText(
+          find.byType(TextFormField).first, 'Persistent Task');
       await _pumpFrames(tester);
 
       await tester.tap(find.text('未選択').first);

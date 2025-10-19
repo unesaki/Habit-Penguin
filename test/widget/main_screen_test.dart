@@ -31,8 +31,7 @@ void main() {
     await Hive.openBox<TaskCompletionHistory>('completion_history');
     await Hive.openBox('appState');
     notificationService = NotificationService.test();
-    await Hive.box('appState')
-        .put('hasCompletedOnboarding', true);
+    await Hive.box('appState').put('hasCompletedOnboarding', true);
   });
 
   tearDown(() async {

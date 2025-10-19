@@ -35,8 +35,7 @@ void main() {
 
   setUp(() async {
     notificationService = NotificationService.test();
-    await Hive.box('appState')
-        .put('hasCompletedOnboarding', true);
+    await Hive.box('appState').put('hasCompletedOnboarding', true);
   });
 
   tearDown(() async {
@@ -58,18 +57,26 @@ void main() {
     );
   }
 
+  Future<void> _pumpFrames(WidgetTester tester, [int times = 6]) async {
+    for (var i = 0; i < times; i++) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+  }
+
   testWidgets('Navigation shows Habit Penguin tabs', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(_buildApp());
-    await tester.pump(const Duration(milliseconds: 100));
+    await _pumpFrames(tester, 12);
 
-    expect(find.textContaining('Habit Penguin'), findsWidgets);
     expect(find.byType(BottomNavigationBar), findsOneWidget);
+    expect(find.text('Tasks'), findsOneWidget);
+    expect(find.text('Home'), findsOneWidget);
+    expect(find.text('Penguin'), findsOneWidget);
 
-    await tester.tap(find.text('Tasks'));
-    await tester.pump(const Duration(milliseconds: 100));
+    await tester.tap(find.text('Tasks').first);
+    await _pumpFrames(tester, 12);
 
-    expect(find.text('今日のタスク'), findsOneWidget);
+    expect(find.byTooltip('Add Task'), findsOneWidget);
   });
 }
