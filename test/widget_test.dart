@@ -9,15 +9,19 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive/hive.dart';
 
 import 'package:habit_penguin/main.dart';
 import 'package:habit_penguin/models/habit_task.dart';
+import 'package:habit_penguin/providers/providers.dart';
+import 'package:habit_penguin/services/notification_service.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   late Directory tempDir;
+  late NotificationService notificationService;
 
   setUpAll(() async {
     tempDir = await Directory.systemTemp.createTemp('habit_penguin_test');
@@ -27,6 +31,12 @@ void main() {
     }
     await Hive.openBox<HabitTask>('tasks');
     await Hive.openBox('appState');
+  });
+
+  setUp(() async {
+    notificationService = NotificationService.test();
+    await Hive.box('appState')
+        .put('hasCompletedOnboarding', true);
   });
 
   tearDown(() async {
@@ -39,10 +49,19 @@ void main() {
     await tempDir.delete(recursive: true);
   });
 
+  Widget _buildApp() {
+    return ProviderScope(
+      overrides: [
+        notificationServiceProvider.overrideWithValue(notificationService),
+      ],
+      child: const HabitPenguinApp(),
+    );
+  }
+
   testWidgets('Navigation shows Habit Penguin tabs', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(const HabitPenguinApp());
+    await tester.pumpWidget(_buildApp());
     await tester.pump(const Duration(milliseconds: 100));
 
     expect(find.textContaining('Habit Penguin'), findsWidgets);

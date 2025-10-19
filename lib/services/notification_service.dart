@@ -11,14 +11,24 @@ import '../models/notification_history.dart';
 
 /// 通知管理を担当するサービスクラス
 class NotificationService {
-  NotificationService() {
-    _initializeNotifications();
+  NotificationService({
+    FlutterLocalNotificationsPlugin? plugin,
+    bool initialize = true,
+  })  : _notifications = plugin ?? FlutterLocalNotificationsPlugin(),
+        _initialized = false {
+    if (initialize) {
+      _initializeNotifications();
+    }
   }
 
-  final FlutterLocalNotificationsPlugin _notifications =
-      FlutterLocalNotificationsPlugin();
+  /// テスト用コンストラクタ: 通知初期化をスキップ
+  NotificationService.test({FlutterLocalNotificationsPlugin? plugin})
+      : _notifications = plugin ?? FlutterLocalNotificationsPlugin(),
+        _initialized = true;
 
-  bool _initialized = false;
+  final FlutterLocalNotificationsPlugin _notifications;
+
+  bool _initialized;
 
   /// 通知タップ時のコールバック（外部から設定可能）
   Function(String?)? onNotificationTapped;
