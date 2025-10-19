@@ -65,7 +65,8 @@ class AnalyticsService {
       // _analytics = FirebaseAnalytics.instance;
 
       _isInitialized = true;
-      debugPrint('AnalyticsService: Initialized (mock mode - Firebase not configured)');
+      debugPrint(
+          'AnalyticsService: Initialized (mock mode - Firebase not configured)');
     } catch (e) {
       debugPrint('AnalyticsService: Failed to initialize: $e');
       _isInitialized = false;
@@ -169,7 +170,8 @@ class AnalyticsService {
     String? screenClass,
   }) async {
     if (!_isInitialized) {
-      debugPrint('AnalyticsService: Screen view (not initialized): $screenName');
+      debugPrint(
+          'AnalyticsService: Screen view (not initialized): $screenName');
       return;
     }
 

@@ -72,8 +72,7 @@ final allTasksProvider = StreamProvider<List<HabitTask>>((ref) {
 });
 
 /// 未完了タスク（インデックス付き）を取得するプロバイダー
-final openTasksProvider =
-    StreamProvider<List<MapEntry<int, HabitTask>>>((ref) {
+final openTasksProvider = StreamProvider<List<MapEntry<int, HabitTask>>>((ref) {
   final repository = ref.watch(taskRepositoryProvider);
 
   return Stream.periodic(const Duration(milliseconds: 100))
@@ -98,20 +97,19 @@ final todayActiveTasksProvider =
   final today = DateTime.now();
 
   return Stream.periodic(const Duration(milliseconds: 100))
-      .asyncMap((_) => repository.getActiveTasksOn(today, excludeCompleted: true))
+      .asyncMap(
+          (_) => repository.getActiveTasksOn(today, excludeCompleted: true))
       .distinct(_indexedTaskEntriesEqual);
 });
 
 /// 特定のタスクのストリークを取得するプロバイダー
-final taskStreakProvider =
-    Provider.family<int, int>((ref, taskKey) {
+final taskStreakProvider = Provider.family<int, int>((ref, taskKey) {
   final historyRepo = ref.watch(completionHistoryRepositoryProvider);
   return historyRepo.calculateStreak(taskKey);
 });
 
 /// 特定のタスクの最大ストリークを取得するプロバイダー
-final taskMaxStreakProvider =
-    Provider.family<int, int>((ref, taskKey) {
+final taskMaxStreakProvider = Provider.family<int, int>((ref, taskKey) {
   final historyRepo = ref.watch(completionHistoryRepositoryProvider);
   return historyRepo.calculateMaxStreak(taskKey);
 });

@@ -200,10 +200,13 @@ class HowToUseScreen extends StatelessWidget {
                       const SizedBox(width: 12),
                       Text(
                         isJapanese ? 'ヒント' : 'Tips',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              color: Theme.of(context).colorScheme.onPrimaryContainer,
-                              fontWeight: FontWeight.bold,
-                            ),
+                        style:
+                            Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onPrimaryContainer,
+                                  fontWeight: FontWeight.bold,
+                                ),
                       ),
                     ],
                   ),
@@ -219,7 +222,8 @@ class HowToUseScreen extends StatelessWidget {
                             '• If your streak breaks, just start again today!\n'
                             '• Accumulate XP to level up',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Theme.of(context).colorScheme.onPrimaryContainer,
+                          color:
+                              Theme.of(context).colorScheme.onPrimaryContainer,
                         ),
                   ),
                 ],

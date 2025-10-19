@@ -23,7 +23,8 @@ class NotificationHistoryScreen extends ConsumerWidget {
         ],
       ),
       body: ValueListenableBuilder<Box<NotificationHistory>>(
-        valueListenable: Hive.box<NotificationHistory>('notification_history').listenable(),
+        valueListenable:
+            Hive.box<NotificationHistory>('notification_history').listenable(),
         builder: (context, box, _) {
           final history = box.values.toList()
             ..sort((a, b) => b.sentAt.compareTo(a.sentAt)); // 新しい順にソート

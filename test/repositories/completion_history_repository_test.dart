@@ -19,7 +19,8 @@ void main() {
       Hive.registerAdapter(TaskCompletionHistoryAdapter());
     }
 
-    historyBox = await Hive.openBox<TaskCompletionHistory>('completion_history');
+    historyBox =
+        await Hive.openBox<TaskCompletionHistory>('completion_history');
     repository = CompletionHistoryRepository(historyBox);
   });
 

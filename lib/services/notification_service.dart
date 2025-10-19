@@ -32,7 +32,8 @@ class NotificationService {
     tz.setLocalLocation(tz.getLocation('Asia/Tokyo'));
 
     // Android設定
-    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const androidSettings =
+        AndroidInitializationSettings('@mipmap/ic_launcher');
 
     // iOS設定
     const iosSettings = DarwinInitializationSettings(
@@ -293,9 +294,12 @@ class NotificationService {
 
     // 通知設定を取得
     final settingsBox = Hive.box('notification_settings');
-    final soundEnabled = settingsBox.get('sound_enabled', defaultValue: true) as bool;
-    final vibrationEnabled = settingsBox.get('vibration_enabled', defaultValue: true) as bool;
-    final priority = settingsBox.get('notification_priority', defaultValue: 'high') as String;
+    final soundEnabled =
+        settingsBox.get('sound_enabled', defaultValue: true) as bool;
+    final vibrationEnabled =
+        settingsBox.get('vibration_enabled', defaultValue: true) as bool;
+    final priority = settingsBox.get('notification_priority',
+        defaultValue: 'high') as String;
 
     // 優先度を設定
     final importance = priority == 'high'
@@ -420,7 +424,8 @@ class NotificationService {
 
   /// 高度な通知設定を取得
   AdvancedNotificationSettings? getAdvancedSettings(int taskId) {
-    final settingsBox = Hive.box<AdvancedNotificationSettings>('advanced_notification_settings');
+    final settingsBox = Hive.box<AdvancedNotificationSettings>(
+        'advanced_notification_settings');
     return settingsBox.values.firstWhere(
       (settings) => settings.taskId == taskId,
       orElse: () => AdvancedNotificationSettings(

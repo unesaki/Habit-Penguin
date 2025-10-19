@@ -22,17 +22,13 @@ class CompletionHistoryRepository {
 
   /// 特定のタスクの完了履歴を取得
   List<TaskCompletionHistory> getHistoryForTask(int taskKey) {
-    return getAllHistory()
-        .where((record) => record.taskKey == taskKey)
-        .toList()
+    return getAllHistory().where((record) => record.taskKey == taskKey).toList()
       ..sort((a, b) => b.completedAt.compareTo(a.completedAt));
   }
 
   /// 特定の日付の完了履歴を取得
   List<TaskCompletionHistory> getHistoryForDate(DateTime date) {
-    return getAllHistory()
-        .where((record) => record.isOnDate(date))
-        .toList()
+    return getAllHistory().where((record) => record.isOnDate(date)).toList()
       ..sort((a, b) => b.completedAt.compareTo(a.completedAt));
   }
 

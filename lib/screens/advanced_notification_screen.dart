@@ -34,7 +34,8 @@ class _AdvancedNotificationScreenState
   }
 
   Future<void> _loadSettings() async {
-    final box = Hive.box<AdvancedNotificationSettings>('advanced_notification_settings');
+    final box = Hive.box<AdvancedNotificationSettings>(
+        'advanced_notification_settings');
 
     // このタスクIDの設定を探す
     final existingSettings = box.values.firstWhere(
@@ -298,7 +299,8 @@ class _AdvancedNotificationScreenState
     }
 
     // Hiveに保存
-    final box = Hive.box<AdvancedNotificationSettings>('advanced_notification_settings');
+    final box = Hive.box<AdvancedNotificationSettings>(
+        'advanced_notification_settings');
 
     // 既存の設定を探す
     AdvancedNotificationSettings? existingSettings;

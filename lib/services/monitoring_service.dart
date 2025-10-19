@@ -108,7 +108,8 @@ class MonitoringService {
     SentryLevel level = SentryLevel.info,
   }) async {
     if (!_isInitialized) {
-      debugPrint('MonitoringService: Message recorded (Sentry not initialized)');
+      debugPrint(
+          'MonitoringService: Message recorded (Sentry not initialized)');
       debugPrint('Message: $message');
       return;
     }

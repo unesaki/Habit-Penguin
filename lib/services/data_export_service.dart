@@ -78,7 +78,8 @@ class DataExportService {
 
       if (format == ExportFormat.json) {
         final json = await exportToJson();
-        final file = File('${directory.path}/habit_penguin_data_$timestamp.json');
+        final file =
+            File('${directory.path}/habit_penguin_data_$timestamp.json');
         await file.writeAsString(json);
 
         await Share.shareXFiles(
@@ -88,10 +89,12 @@ class DataExportService {
       } else if (format == ExportFormat.csv) {
         final csvData = await exportToCsv();
 
-        final tasksFile = File('${directory.path}/habit_penguin_tasks_$timestamp.csv');
+        final tasksFile =
+            File('${directory.path}/habit_penguin_tasks_$timestamp.csv');
         await tasksFile.writeAsString(csvData['tasks']!);
 
-        final historyFile = File('${directory.path}/habit_penguin_history_$timestamp.csv');
+        final historyFile =
+            File('${directory.path}/habit_penguin_history_$timestamp.csv');
         await historyFile.writeAsString(csvData['history']!);
 
         await Share.shareXFiles(

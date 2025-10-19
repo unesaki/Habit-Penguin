@@ -93,9 +93,8 @@ class HabitTask extends HiveObject {
       iconCodePoint: iconCodePoint ?? this.iconCodePoint,
       reminderEnabled: reminderEnabled ?? this.reminderEnabled,
       difficulty: difficulty ?? this.difficulty,
-      scheduledDate: shouldRepeat
-          ? null
-          : (scheduledDate ?? this.scheduledDate),
+      scheduledDate:
+          shouldRepeat ? null : (scheduledDate ?? this.scheduledDate),
       repeatStart: shouldRepeat ? (repeatStart ?? this.repeatStart) : null,
       repeatEnd: shouldRepeat ? (repeatEnd ?? this.repeatEnd) : null,
       reminderTime: reminderTime ?? this.reminderTime,

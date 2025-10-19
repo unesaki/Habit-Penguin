@@ -26,9 +26,7 @@ class FaqScreen extends StatelessWidget {
                 : 'When you complete a task, you earn XP (experience points) based on its difficulty:\n\n• Easy: 10 XP\n• Normal: 20 XP\n• Hard: 30 XP\n\nYou can view your total XP on the Home screen.',
           ),
           _FaqItem(
-            question: isJapanese
-                ? 'ストリーク（連続記録）とは何ですか？'
-                : 'What is a streak?',
+            question: isJapanese ? 'ストリーク（連続記録）とは何ですか？' : 'What is a streak?',
             answer: isJapanese
                 ? 'ストリークは、タスクを連続して完了した日数を表します。毎日タスクを完了することで、ストリークが増えていきます。1日でもタスクを完了しないと、ストリークは0にリセットされます。'
                 : 'A streak represents the number of consecutive days you\'ve completed a task. Complete your tasks daily to build your streak. Missing a day will reset your streak to 0.',
@@ -58,9 +56,8 @@ class FaqScreen extends StatelessWidget {
                 : 'Yes, you can restore it immediately after deletion. When you delete a task, a snackbar appears at the bottom of the screen with an "Undo" button. Tap it to restore the task.\n\nYou can also use the "Undo" button at the top of the Tasks screen to reverse your last action.',
           ),
           _FaqItem(
-            question: isJapanese
-                ? 'タスクの順番を変更できますか？'
-                : 'Can I reorder my tasks?',
+            question:
+                isJapanese ? 'タスクの順番を変更できますか？' : 'Can I reorder my tasks?',
             answer: isJapanese
                 ? 'はい、できます。タスク画面の上部にある「並び替えボタン」（↕アイコン）をタップすると、並び替えモードに入ります。タスクを長押ししてドラッグすることで、順番を変更できます。'
                 : 'Yes! Tap the reorder button (↕ icon) at the top of the Tasks screen to enter reorder mode. Then, long-press and drag tasks to rearrange them.',
@@ -74,17 +71,14 @@ class FaqScreen extends StatelessWidget {
                 : 'Yes! Tap the selection button (checklist icon) at the top of the Tasks screen to enter selection mode. Select the tasks you want to delete, then tap the delete button.',
           ),
           _FaqItem(
-            question: isJapanese
-                ? 'データはどこに保存されますか？'
-                : 'Where is my data stored?',
+            question:
+                isJapanese ? 'データはどこに保存されますか？' : 'Where is my data stored?',
             answer: isJapanese
                 ? 'すべてのデータは、お使いのデバイスにローカルで保存されます。データはクラウドに送信されず、プライバシーが保護されます。\n\nまた、データは暗号化されて保存されるため、セキュリティも確保されています。'
                 : 'All your data is stored locally on your device. No data is sent to the cloud, ensuring your privacy.\n\nAdditionally, your data is encrypted for security.',
           ),
           _FaqItem(
-            question: isJapanese
-                ? 'データをバックアップできますか？'
-                : 'Can I backup my data?',
+            question: isJapanese ? 'データをバックアップできますか？' : 'Can I backup my data?',
             answer: isJapanese
                 ? 'はい、できます。設定 > プライバシーとデータ管理 > データのエクスポートから、すべてのデータをJSON形式でエクスポートできます。エクスポートしたファイルは、バックアップとして保存できます。'
                 : 'Yes! Go to Settings > Privacy and Data Management > Export Data to export all your data as a JSON file. You can save this file as a backup.',

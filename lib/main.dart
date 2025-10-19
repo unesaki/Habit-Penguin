@@ -50,7 +50,8 @@ Future<void> main() async {
       await Hive.openBox<HabitTask>('tasks');
       await Hive.openBox<TaskCompletionHistory>('completion_history');
       await Hive.openBox<NotificationHistory>('notification_history');
-      await Hive.openBox<AdvancedNotificationSettings>('advanced_notification_settings');
+      await Hive.openBox<AdvancedNotificationSettings>(
+          'advanced_notification_settings');
       await Hive.openBox('notification_settings');
       final appStateBox = await Hive.openBox('appState');
 
@@ -247,81 +248,87 @@ class HomeTab extends ConsumerWidget {
       data: (openEntries) {
         return todayActiveTasksAsync.when(
           data: (todaysEntries) {
-            final displayedTasks = todaysEntries.take(3).toList(growable: false);
-        return DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                Theme.of(
-                  context,
-                ).colorScheme.primaryContainer.withValues(alpha: 0.35),
-                Theme.of(context).colorScheme.surface,
-              ],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-            ),
-          ),
-          child: SafeArea(
-            bottom: false,
-            child: SingleChildScrollView(
-              physics: const NeverScrollableScrollPhysics(),
-              padding: const EdgeInsets.only(bottom: 48),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _PenguinHeroSection(totalTasks: openEntries.length),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(height: 20),
-                        Text(
-                          '今日のタスク',
-                          style: Theme.of(context).textTheme.titleLarge
-                              ?.copyWith(fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 16),
-                        if (displayedTasks.isEmpty) ...[
-                          const _CreateTaskCallout(),
-                        ] else ...[
-                          for (var i = 0; i < displayedTasks.length; i++)
-                            Padding(
-                              padding: EdgeInsets.only(
-                                bottom: i == displayedTasks.length - 1 ? 0 : 8,
-                              ),
-                              child: _TodayTaskCard(
-                                task: displayedTasks[i].value,
-                                index: displayedTasks[i].key,
-                                onComplete: () => _completeTaskWithXp(
-                                  context,
-                                  ref,
-                                  displayedTasks[i].key,
-                                ),
-                              ),
-                            ),
-                          if (openEntries.length > displayedTasks.length)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 16),
-                              child: Text(
-                                '残りのタスクはTasksタブで確認できます。',
-                                style: Theme.of(context).textTheme.bodySmall
-                                    ?.copyWith(
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.secondary,
-                                    ),
-                              ),
-                            ),
-                        ],
-                      ],
-                    ),
-                  ),
-                ],
+            final displayedTasks =
+                todaysEntries.take(3).toList(growable: false);
+            return DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Theme.of(
+                      context,
+                    ).colorScheme.primaryContainer.withValues(alpha: 0.35),
+                    Theme.of(context).colorScheme.surface,
+                  ],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ),
               ),
-            ),
-          ),
-        );
+              child: SafeArea(
+                bottom: false,
+                child: SingleChildScrollView(
+                  physics: const NeverScrollableScrollPhysics(),
+                  padding: const EdgeInsets.only(bottom: 48),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _PenguinHeroSection(totalTasks: openEntries.length),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(height: 20),
+                            Text(
+                              '今日のタスク',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleLarge
+                                  ?.copyWith(fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 16),
+                            if (displayedTasks.isEmpty) ...[
+                              const _CreateTaskCallout(),
+                            ] else ...[
+                              for (var i = 0; i < displayedTasks.length; i++)
+                                Padding(
+                                  padding: EdgeInsets.only(
+                                    bottom:
+                                        i == displayedTasks.length - 1 ? 0 : 8,
+                                  ),
+                                  child: _TodayTaskCard(
+                                    task: displayedTasks[i].value,
+                                    index: displayedTasks[i].key,
+                                    onComplete: () => _completeTaskWithXp(
+                                      context,
+                                      ref,
+                                      displayedTasks[i].key,
+                                    ),
+                                  ),
+                                ),
+                              if (openEntries.length > displayedTasks.length)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 16),
+                                  child: Text(
+                                    '残りのタスクはTasksタブで確認できます。',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodySmall
+                                        ?.copyWith(
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.secondary,
+                                        ),
+                                  ),
+                                ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
           },
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (e, st) => Center(child: Text('エラー: $e')),
@@ -772,14 +779,21 @@ class _TasksTabState extends ConsumerState<TasksTab> {
 
                 // 全タスクを統合（今日のタスク + 区切り + 登録中のタスク）
                 // 一時的な順序がある場合はそれを使用、なければ通常の順序
-                final allItems = _tempItems ?? <dynamic>[
-                  ...activeEntries.map((e) => {'type': 'active', 'data': e}),
-                  {'type': 'divider'},
-                  ...backlogEntries.map((e) => {'type': 'backlog', 'data': e}),
-                ];
+                final allItems = _tempItems ??
+                    <dynamic>[
+                      ...activeEntries
+                          .map((e) => {'type': 'active', 'data': e}),
+                      {'type': 'divider'},
+                      ...backlogEntries
+                          .map((e) => {'type': 'backlog', 'data': e}),
+                    ];
 
                 // データが変わったら一時的な順序をクリア
-                if (_tempItems != null && openEntries.length != _tempItems!.where((item) => item['type'] != 'divider').length) {
+                if (_tempItems != null &&
+                    openEntries.length !=
+                        _tempItems!
+                            .where((item) => item['type'] != 'divider')
+                            .length) {
                   WidgetsBinding.instance.addPostFrameCallback((_) {
                     if (mounted) {
                       setState(() {
@@ -789,241 +803,258 @@ class _TasksTabState extends ConsumerState<TasksTab> {
                   });
                 }
 
-            return Container(
-              color: const Color(0xFFF6F6F6),
-              child: CustomScrollView(
-                slivers: [
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
+                return Container(
+                  color: const Color(0xFFF6F6F6),
+                  child: CustomScrollView(
+                    slivers: [
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
+                              Row(
+                                children: [
+                                  const Text(
+                                    '経験値: ',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF333333),
+                                    ),
+                                  ),
+                                  Text(
+                                    '$currentXp XP',
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFFFFD79E),
+                                    ),
+                                  ),
+                                  const Spacer(),
+                                  TextButton.icon(
+                                    onPressed: () =>
+                                        _openCompletedTasks(context),
+                                    icon: const Icon(Icons.history),
+                                    label: const Text('完了済み'),
+                                  ),
+                                ],
+                              ),
+                              if (undoService.canUndo)
+                                TextButton.icon(
+                                  onPressed: () async {
+                                    await undoService.undo();
+                                    if (mounted) {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                              '「${undoService.lastActionDescription ?? "操作"}」を取り消しました'),
+                                          duration: const Duration(seconds: 2),
+                                        ),
+                                      );
+                                    }
+                                  },
+                                  icon: const Icon(Icons.undo),
+                                  label: Text(
+                                      '取り消し: ${undoService.lastActionDescription}'),
+                                ),
+                              const SizedBox(height: 8),
                               const Text(
-                                '経験値: ',
+                                '今日のタスク',
                                 style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,
                                   color: Color(0xFF333333),
                                 ),
                               ),
-                              Text(
-                                '$currentXp XP',
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFFFFD79E),
-                                ),
-                              ),
-                              const Spacer(),
-                              TextButton.icon(
-                                onPressed: () => _openCompletedTasks(context),
-                                icon: const Icon(Icons.history),
-                                label: const Text('完了済み'),
-                              ),
+                              const SizedBox(height: 12),
                             ],
                           ),
-                          if (undoService.canUndo)
-                            TextButton.icon(
-                              onPressed: () async {
-                                await undoService.undo();
-                                if (mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text('「${undoService.lastActionDescription ?? "操作"}」を取り消しました'),
-                                      duration: const Duration(seconds: 2),
-                                    ),
-                                  );
-                                }
+                        ),
+                      ),
+                      if (openEntries.isEmpty)
+                        SliverToBoxAdapter(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: _EmptyStateWidget(
+                              onCreateTask: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute<void>(
+                                    builder: (_) => const TaskFormPage(),
+                                  ),
+                                );
                               },
-                              icon: const Icon(Icons.undo),
-                              label: Text('取り消し: ${undoService.lastActionDescription}'),
-                            ),
-                          const SizedBox(height: 8),
-                          const Text(
-                            '今日のタスク',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF333333),
                             ),
                           ),
-                          const SizedBox(height: 12),
-                        ],
-                      ),
-                    ),
-                  ),
-                  if (openEntries.isEmpty)
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: _EmptyStateWidget(
-                          onCreateTask: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute<void>(
-                                builder: (_) => const TaskFormPage(),
+                        )
+                      else
+                        SliverReorderableList(
+                          itemCount: allItems.length,
+                          onReorder: (oldIndex, newIndex) {
+                            // 区切り線のインデックスを計算（現在の表示リスト基準）
+                            final dividerIndexInList = allItems.indexWhere(
+                                (item) => item['type'] == 'divider');
+
+                            // 区切り線をドラッグしようとした場合は無視
+                            if (oldIndex == dividerIndexInList) return;
+
+                            // newIndexの調整
+                            var adjustedNewIndex = newIndex;
+                            if (adjustedNewIndex > oldIndex) {
+                              adjustedNewIndex--;
+                            }
+
+                            // 区切り線に移動しようとした場合は無視
+                            if (adjustedNewIndex == dividerIndexInList) return;
+
+                            final oldItem = allItems[oldIndex];
+                            if (oldItem['type'] == 'divider') return;
+
+                            final items = List<dynamic>.from(allItems);
+                            final movedItem = items.removeAt(oldIndex);
+                            items.insert(adjustedNewIndex, movedItem);
+
+                            // まずUIを即座に更新
+                            setState(() {
+                              _tempItems = items;
+                            });
+
+                            final entry =
+                                oldItem['data'] as MapEntry<int, HabitTask>;
+                            final task = entry.value;
+
+                            final wasInActive = oldIndex < dividerIndexInList;
+                            final nowInActive =
+                                adjustedNewIndex < dividerIndexInList;
+
+                            // セクション間の移動のみ処理
+                            if (wasInActive != nowInActive) {
+                              // 非同期処理を実行（UIは既に更新済み）
+                              _handleSectionMove(
+                                context,
+                                ref,
+                                task,
+                                wasInActive,
+                                nowInActive,
+                              ).then((_) {
+                                // 処理完了後、一時的なリストをクリア
+                                if (mounted) {
+                                  setState(() {
+                                    _tempItems = null;
+                                  });
+                                }
+                              });
+                            } else {
+                              final orderedKeys = items
+                                  .where((item) => item['type'] != 'divider')
+                                  .map((item) =>
+                                      (item['data'] as MapEntry<int, HabitTask>)
+                                          .key)
+                                  .toList(growable: false);
+                              final oldTaskIndex = entry.key;
+                              final newPosition =
+                                  orderedKeys.indexOf(oldTaskIndex);
+
+                              final taskRepository =
+                                  ref.read(taskRepositoryProvider);
+                              final allIndices = List<int>.generate(
+                                taskRepository.taskCount,
+                                (index) => index,
+                              )..remove(oldTaskIndex);
+
+                              int? computedNewIndex;
+                              if (newPosition + 1 < orderedKeys.length) {
+                                final nextKey = orderedKeys[newPosition + 1];
+                                final idx = allIndices.indexOf(nextKey);
+                                if (idx != -1) {
+                                  computedNewIndex = idx;
+                                }
+                              }
+                              if (computedNewIndex == null) {
+                                if (newPosition == 0) {
+                                  computedNewIndex = 0;
+                                } else {
+                                  final prevKey = orderedKeys[newPosition - 1];
+                                  final prevIdx = allIndices.indexOf(prevKey);
+                                  computedNewIndex = prevIdx == -1
+                                      ? allIndices.length
+                                      : prevIdx + 1;
+                                }
+                              }
+
+                              taskRepository
+                                  .reorderTask(oldTaskIndex, computedNewIndex!)
+                                  .whenComplete(() {
+                                if (mounted) {
+                                  setState(() {
+                                    _tempItems = null;
+                                  });
+                                }
+                              });
+                            }
+                          },
+                          proxyDecorator: (child, index, animation) {
+                            return Material(
+                              elevation: 6,
+                              borderRadius: BorderRadius.circular(20),
+                              child: child,
+                            );
+                          },
+                          itemBuilder: (context, index) {
+                            final item = allItems[index];
+
+                            if (item['type'] == 'divider') {
+                              return Container(
+                                key: const ValueKey('divider'),
+                                padding:
+                                    const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                                child: const Text(
+                                  '登録中のタスク',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF333333),
+                                  ),
+                                ),
+                              );
+                            }
+
+                            final entry =
+                                item['data'] as MapEntry<int, HabitTask>;
+                            final isActive = item['type'] == 'active';
+
+                            return ReorderableDragStartListener(
+                              key: ValueKey('task_${entry.key}'),
+                              index: index,
+                              child: Padding(
+                                padding: const EdgeInsets.only(
+                                    left: 16, right: 16, bottom: 12),
+                                child: _TaskListTile(
+                                  task: entry.value,
+                                  taskIndex: entry.key,
+                                  onTap: () =>
+                                      widget.onEditTask(entry.key, entry.value),
+                                  onDelete: () =>
+                                      _confirmDelete(context, ref, entry.key),
+                                  onComplete: () => _completeTaskWithXp(
+                                      context, ref, entry.key),
+                                  isActive: isActive,
+                                  isSelectionMode: false,
+                                  isSelected: false,
+                                  onSelectionToggle: null,
+                                  isReorderMode: false,
+                                ),
                               ),
                             );
                           },
                         ),
+                      const SliverToBoxAdapter(
+                        child: SizedBox(height: 16),
                       ),
-                    )
-                  else
-                    SliverReorderableList(
-                      itemCount: allItems.length,
-                      onReorder: (oldIndex, newIndex) {
-                        // 区切り線のインデックスを計算（現在の表示リスト基準）
-                        final dividerIndexInList = allItems.indexWhere((item) => item['type'] == 'divider');
-
-                        // 区切り線をドラッグしようとした場合は無視
-                        if (oldIndex == dividerIndexInList) return;
-
-                        // newIndexの調整
-                        var adjustedNewIndex = newIndex;
-                        if (adjustedNewIndex > oldIndex) {
-                          adjustedNewIndex--;
-                        }
-
-                        // 区切り線に移動しようとした場合は無視
-                        if (adjustedNewIndex == dividerIndexInList) return;
-
-                        final oldItem = allItems[oldIndex];
-                        if (oldItem['type'] == 'divider') return;
-
-                        final items = List<dynamic>.from(allItems);
-                        final movedItem = items.removeAt(oldIndex);
-                        items.insert(adjustedNewIndex, movedItem);
-
-                        // まずUIを即座に更新
-                        setState(() {
-                          _tempItems = items;
-                        });
-
-                        final entry = oldItem['data'] as MapEntry<int, HabitTask>;
-                        final task = entry.value;
-
-                        final wasInActive = oldIndex < dividerIndexInList;
-                        final nowInActive = adjustedNewIndex < dividerIndexInList;
-
-                        // セクション間の移動のみ処理
-                        if (wasInActive != nowInActive) {
-                          // 非同期処理を実行（UIは既に更新済み）
-                          _handleSectionMove(
-                            context,
-                            ref,
-                            task,
-                            wasInActive,
-                            nowInActive,
-                          ).then((_) {
-                            // 処理完了後、一時的なリストをクリア
-                            if (mounted) {
-                              setState(() {
-                                _tempItems = null;
-                              });
-                            }
-                          });
-                        } else {
-                          final orderedKeys = items
-                              .where((item) => item['type'] != 'divider')
-                              .map((item) => (item['data'] as MapEntry<int, HabitTask>).key)
-                              .toList(growable: false);
-                          final oldTaskIndex = entry.key;
-                          final newPosition = orderedKeys.indexOf(oldTaskIndex);
-
-                          final taskRepository = ref.read(taskRepositoryProvider);
-                          final allIndices = List<int>.generate(
-                            taskRepository.taskCount,
-                            (index) => index,
-                          )..remove(oldTaskIndex);
-
-                          int? computedNewIndex;
-                          if (newPosition + 1 < orderedKeys.length) {
-                            final nextKey = orderedKeys[newPosition + 1];
-                            final idx = allIndices.indexOf(nextKey);
-                            if (idx != -1) {
-                              computedNewIndex = idx;
-                            }
-                          }
-                          if (computedNewIndex == null) {
-                            if (newPosition == 0) {
-                              computedNewIndex = 0;
-                            } else {
-                              final prevKey = orderedKeys[newPosition - 1];
-                              final prevIdx = allIndices.indexOf(prevKey);
-                              computedNewIndex =
-                                  prevIdx == -1 ? allIndices.length : prevIdx + 1;
-                            }
-                          }
-
-                          taskRepository
-                              .reorderTask(oldTaskIndex, computedNewIndex!)
-                              .whenComplete(() {
-                            if (mounted) {
-                              setState(() {
-                                _tempItems = null;
-                              });
-                            }
-                          });
-                        }
-                      },
-                      proxyDecorator: (child, index, animation) {
-                        return Material(
-                          elevation: 6,
-                          borderRadius: BorderRadius.circular(20),
-                          child: child,
-                        );
-                      },
-                      itemBuilder: (context, index) {
-                        final item = allItems[index];
-
-                        if (item['type'] == 'divider') {
-                          return Container(
-                            key: const ValueKey('divider'),
-                            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                            child: const Text(
-                              '登録中のタスク',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF333333),
-                              ),
-                            ),
-                          );
-                        }
-
-                        final entry = item['data'] as MapEntry<int, HabitTask>;
-                        final isActive = item['type'] == 'active';
-
-                        return ReorderableDragStartListener(
-                          key: ValueKey('task_${entry.key}'),
-                          index: index,
-                          child: Padding(
-                            padding: const EdgeInsets.only(left: 16, right: 16, bottom: 12),
-                            child: _TaskListTile(
-                              task: entry.value,
-                              taskIndex: entry.key,
-                              onTap: () => widget.onEditTask(entry.key, entry.value),
-                              onDelete: () => _confirmDelete(context, ref, entry.key),
-                              onComplete: () =>
-                                  _completeTaskWithXp(context, ref, entry.key),
-                              isActive: isActive,
-                              isSelectionMode: false,
-                              isSelected: false,
-                              onSelectionToggle: null,
-                              isReorderMode: false,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  const SliverToBoxAdapter(
-                    child: SizedBox(height: 16),
+                    ],
                   ),
-                ],
-              ),
-            );
+                );
               },
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (e, st) => Center(child: Text('エラー: $e')),
@@ -1127,7 +1158,8 @@ class _TasksTabState extends ConsumerState<TasksTab> {
       );
 
       if (selectedDate != null) {
-        task.scheduledDate = DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
+        task.scheduledDate =
+            DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
         task.repeatStart = null;
         task.repeatEnd = null;
         await repository.updateTask(task);
@@ -1308,7 +1340,8 @@ class _TaskFormPageState extends ConsumerState<TaskFormPage> {
                                   labelText: 'タスク名',
                                   hintText: 'どんな習慣をつくる?',
                                   hintStyle: TextStyle(
-                                    color: const Color(0xFF333333).withOpacity(0.4),
+                                    color: const Color(0xFF333333)
+                                        .withOpacity(0.4),
                                   ),
                                   labelStyle: const TextStyle(
                                     color: Color(0xFF333333),
@@ -1327,7 +1360,8 @@ class _TaskFormPageState extends ConsumerState<TaskFormPage> {
                               ),
                               const SizedBox(height: 16),
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
                                   const Text(
                                     'アイコン',
@@ -1348,7 +1382,8 @@ class _TaskFormPageState extends ConsumerState<TaskFormPage> {
                                     ),
                                     label: const Text(
                                       '選択',
-                                      style: TextStyle(color: Color(0xFF333333)),
+                                      style:
+                                          TextStyle(color: Color(0xFF333333)),
                                     ),
                                     style: OutlinedButton.styleFrom(
                                       padding: const EdgeInsets.symmetric(
@@ -1379,7 +1414,8 @@ class _TaskFormPageState extends ConsumerState<TaskFormPage> {
                               SegmentedButton<TaskDifficulty>(
                                 style: ButtonStyle(
                                   visualDensity: VisualDensity.compact,
-                                  backgroundColor: WidgetStateProperty.resolveWith((states) {
+                                  backgroundColor:
+                                      WidgetStateProperty.resolveWith((states) {
                                     if (states.contains(WidgetState.selected)) {
                                       return const Color(0xFFFFD79E);
                                     }
@@ -1400,21 +1436,24 @@ class _TaskFormPageState extends ConsumerState<TaskFormPage> {
                                     value: TaskDifficulty.easy,
                                     label: SizedBox(
                                       width: 60,
-                                      child: Text('Easy', textAlign: TextAlign.center),
+                                      child: Text('Easy',
+                                          textAlign: TextAlign.center),
                                     ),
                                   ),
                                   ButtonSegment(
                                     value: TaskDifficulty.normal,
                                     label: SizedBox(
                                       width: 60,
-                                      child: Text('Normal', textAlign: TextAlign.center),
+                                      child: Text('Normal',
+                                          textAlign: TextAlign.center),
                                     ),
                                   ),
                                   ButtonSegment(
                                     value: TaskDifficulty.hard,
                                     label: SizedBox(
                                       width: 60,
-                                      child: Text('Hard', textAlign: TextAlign.center),
+                                      child: Text('Hard',
+                                          textAlign: TextAlign.center),
                                     ),
                                   ),
                                 ],
@@ -1458,7 +1497,8 @@ class _TaskFormPageState extends ConsumerState<TaskFormPage> {
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
                                   const Text(
                                     '繰り返しタスク',
@@ -1532,7 +1572,8 @@ class _TaskFormPageState extends ConsumerState<TaskFormPage> {
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
                                   const Text(
                                     '通知を受け取る',
@@ -1549,7 +1590,8 @@ class _TaskFormPageState extends ConsumerState<TaskFormPage> {
                                       setState(() {
                                         _reminderEnabled = value;
                                         if (value && _reminderTime == null) {
-                                          _reminderTime = const TimeOfDay(hour: 9, minute: 0);
+                                          _reminderTime = const TimeOfDay(
+                                              hour: 9, minute: 0);
                                         }
                                       });
                                     },
@@ -1586,7 +1628,8 @@ class _TaskFormPageState extends ConsumerState<TaskFormPage> {
                                       ),
                                       label: const Text(
                                         '高度な通知設定',
-                                        style: TextStyle(color: Color(0xFF333333)),
+                                        style:
+                                            TextStyle(color: Color(0xFF333333)),
                                       ),
                                       style: OutlinedButton.styleFrom(
                                         padding: const EdgeInsets.all(12),
@@ -1595,7 +1638,8 @@ class _TaskFormPageState extends ConsumerState<TaskFormPage> {
                                           width: 1.5,
                                         ),
                                         shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(12),
+                                          borderRadius:
+                                              BorderRadius.circular(12),
                                         ),
                                       ),
                                     ),
@@ -2390,7 +2434,8 @@ class _EmptyStateWidget extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             Text(
-              l10n?.emptyStateDescription ?? 'Tap the + button at the bottom right to create your first habit task.',
+              l10n?.emptyStateDescription ??
+                  'Tap the + button at the bottom right to create your first habit task.',
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
               ),
@@ -2402,7 +2447,8 @@ class _EmptyStateWidget extends StatelessWidget {
               icon: const Icon(Icons.add),
               label: Text(l10n?.emptyStateCreateTask ?? 'Create First Task'),
               style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               ),
             ),
           ],
