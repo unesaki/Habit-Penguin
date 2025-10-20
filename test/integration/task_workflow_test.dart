@@ -67,6 +67,17 @@ void main() {
         .last;
   }
 
+  Future<void> waitForTaskFormToClose(WidgetTester tester) async {
+    const maxIterations = 20;
+    for (var i = 0; i < maxIterations; i++) {
+      if (find.byType(TaskFormPage).evaluate().isEmpty) {
+        return;
+      }
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+    fail('Task form did not close after submission');
+  }
+
   group('Task Creation Workflow', () {
     testWidgets('creates a one-time task successfully', (tester) async {
       await tester.pumpWidget(buildTestApp());
@@ -91,12 +102,7 @@ void main() {
 
       // Save task
       await tester.tap(taskFormSubmitButton());
-      await tester.runAsync(() async {
-        await Future<void>.delayed(const Duration(milliseconds: 100));
-      });
-      await pumpFrames(tester, 12);
-
-      expect(find.byType(TaskFormPage), findsNothing);
+      await waitForTaskFormToClose(tester);
 
       // Verify task appears in list
       expect(find.text('Morning Exercise'), findsOneWidget);
@@ -137,13 +143,14 @@ void main() {
       // Select start date
       // Save task
       await tester.tap(taskFormSubmitButton());
-      await pumpFrames(tester);
+      await waitForTaskFormToClose(tester);
 
       // Verify task appears
       expect(find.text('Daily Meditation'), findsOneWidget);
 
       // Verify it's a repeating task
       final tasksBox = Hive.box<HabitTask>('tasks');
+      expect(tasksBox.length, 1);
       expect(tasksBox.getAt(0)?.isRepeating, true);
     });
   });
@@ -168,14 +175,18 @@ void main() {
       await pumpFrames(tester);
 
       await tester.tap(taskFormSubmitButton());
-      await pumpFrames(tester);
+      await waitForTaskFormToClose(tester);
 
       // Get initial XP
       final appStateBox = Hive.box('appState');
       final initialXp = appStateBox.get('currentXp', defaultValue: 0) as int;
 
-      // Complete the task (tap checkbox)
-      await tester.tap(find.byType(Checkbox));
+      // Navigate to Home tab to complete the task
+      await tester.tap(find.text('Home'));
+      await pumpFrames(tester, 12);
+
+      // Complete the task via the action button
+      await tester.tap(find.byTooltip('完了にする').first);
       await pumpFrames(tester);
 
       // Verify XP dialog appears
@@ -217,18 +228,22 @@ void main() {
       await pumpFrames(tester);
 
       await tester.tap(taskFormSubmitButton());
+      await waitForTaskFormToClose(tester);
+
+      await tester.tap(find.text('Home'));
+      await pumpFrames(tester, 12);
+
+      await tester.tap(find.byTooltip('完了にする').first);
       await pumpFrames(tester);
 
-      // Complete task
-      await tester.tap(find.byType(Checkbox));
-      await pumpFrames(tester);
-
-      // Verify 50 XP awarded
       expect(find.textContaining('50 XP'), findsOneWidget);
 
       final appStateBox = Hive.box('appState');
       final xp = appStateBox.get('currentXp', defaultValue: 0) as int;
       expect(xp, 50);
+
+      await tester.tap(find.text('OK'));
+      await pumpFrames(tester);
     });
   });
 
@@ -259,23 +274,22 @@ void main() {
       await pumpFrames(tester);
 
       await tester.tap(taskFormSubmitButton());
-      await pumpFrames(tester);
+      await waitForTaskFormToClose(tester);
 
-      // Complete task
-      await tester.tap(find.byType(Checkbox));
+      await tester.tap(find.text('Home'));
+      await pumpFrames(tester, 12);
+
+      await tester.tap(find.byTooltip('完了にする').first);
       await pumpFrames(tester);
 
       await tester.tap(find.text('OK'));
       await pumpFrames(tester);
 
-      // Verify task moved to completed
       expect(find.text('Daily Task'), findsOneWidget);
 
-      // Verify completion history
       final historyBox = Hive.box<TaskCompletionHistory>('completion_history');
       expect(historyBox.length, 1);
 
-      // Verify task still exists (not deleted)
       final tasksBox = Hive.box<HabitTask>('tasks');
       expect(tasksBox.length, 1);
     });
@@ -298,13 +312,12 @@ void main() {
       await pumpFrames(tester);
 
       await tester.tap(taskFormSubmitButton());
+      await waitForTaskFormToClose(tester);
+
+      final menuButton = find.byTooltip('メニュー').first;
+      await tester.tap(menuButton);
       await pumpFrames(tester);
 
-      // Delete task (long press to show delete option)
-      await tester.longPress(find.text('Task to Delete'));
-      await pumpFrames(tester);
-
-      // Confirm deletion
       await tester.tap(find.text('削除'));
       await pumpFrames(tester);
 
@@ -336,7 +349,7 @@ void main() {
       await pumpFrames(tester);
 
       await tester.tap(taskFormSubmitButton());
-      await pumpFrames(tester);
+      await waitForTaskFormToClose(tester);
 
       // Simulate app restart by creating new widget
       await tester.pumpWidget(buildTestApp());
@@ -367,9 +380,12 @@ void main() {
       await pumpFrames(tester);
 
       await tester.tap(taskFormSubmitButton());
-      await pumpFrames(tester);
+      await waitForTaskFormToClose(tester);
 
-      await tester.tap(find.byType(Checkbox));
+      await tester.tap(find.text('Home'));
+      await pumpFrames(tester, 12);
+
+      await tester.tap(find.byTooltip('完了にする').first);
       await pumpFrames(tester);
 
       await tester.tap(find.text('OK'));
