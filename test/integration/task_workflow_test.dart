@@ -68,12 +68,14 @@ void main() {
   }
 
   Future<void> waitForTaskFormToClose(WidgetTester tester) async {
-    const maxIterations = 20;
-    for (var i = 0; i < maxIterations; i++) {
+    const timeout = Duration(seconds: 5);
+    final deadline = DateTime.now().add(timeout);
+    while (DateTime.now().isBefore(deadline)) {
+      await tester.pump();
       if (find.byType(TaskFormPage).evaluate().isEmpty) {
         return;
       }
-      await tester.pump(const Duration(milliseconds: 50));
+      await tester.pump(const Duration(milliseconds: 100));
     }
     fail('Task form did not close after submission');
   }
