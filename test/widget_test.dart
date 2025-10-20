@@ -48,7 +48,7 @@ void main() {
     await tempDir.delete(recursive: true);
   });
 
-  Widget _buildApp() {
+  Widget buildTestApp() {
     return ProviderScope(
       overrides: [
         notificationServiceProvider.overrideWithValue(notificationService),
@@ -57,7 +57,7 @@ void main() {
     );
   }
 
-  Future<void> _pumpFrames(WidgetTester tester, [int times = 6]) async {
+  Future<void> pumpFrames(WidgetTester tester, [int times = 6]) async {
     for (var i = 0; i < times; i++) {
       await tester.pump(const Duration(milliseconds: 50));
     }
@@ -66,8 +66,8 @@ void main() {
   testWidgets('Navigation shows Habit Penguin tabs', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(_buildApp());
-    await _pumpFrames(tester, 12);
+    await tester.pumpWidget(buildTestApp());
+    await pumpFrames(tester, 12);
 
     expect(find.byType(BottomNavigationBar), findsOneWidget);
     expect(find.text('Tasks'), findsOneWidget);
@@ -75,7 +75,7 @@ void main() {
     expect(find.text('Penguin'), findsOneWidget);
 
     await tester.tap(find.text('Tasks').first);
-    await _pumpFrames(tester, 12);
+    await pumpFrames(tester, 12);
 
     expect(find.byTooltip('Add Task'), findsOneWidget);
   });

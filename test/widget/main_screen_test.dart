@@ -42,7 +42,7 @@ void main() {
     await tempDir.delete(recursive: true);
   });
 
-  Widget _buildApp() {
+  Widget buildTestApp() {
     return ProviderScope(
       overrides: [
         notificationServiceProvider.overrideWithValue(notificationService),
@@ -51,7 +51,7 @@ void main() {
     );
   }
 
-  Future<void> _pumpFrames(WidgetTester tester, [int times = 6]) async {
+  Future<void> pumpFrames(WidgetTester tester, [int times = 6]) async {
     for (var i = 0; i < times; i++) {
       await tester.pump(const Duration(milliseconds: 50));
     }
@@ -59,8 +59,8 @@ void main() {
 
   group('MainScreen Navigation', () {
     testWidgets('shows bottom navigation with three tabs', (tester) async {
-      await tester.pumpWidget(_buildApp());
-      await _pumpFrames(tester, 12);
+      await tester.pumpWidget(buildTestApp());
+      await pumpFrames(tester, 12);
 
       expect(find.byType(BottomNavigationBar), findsOneWidget);
       expect(find.text('Tasks'), findsOneWidget);
@@ -69,28 +69,28 @@ void main() {
     });
 
     testWidgets('starts on Home tab', (tester) async {
-      await tester.pumpWidget(_buildApp());
-      await _pumpFrames(tester);
+      await tester.pumpWidget(buildTestApp());
+      await pumpFrames(tester);
 
       expect(find.text('おかえり！'), findsOneWidget);
     });
 
     testWidgets('switches to Tasks tab when tapped', (tester) async {
-      await tester.pumpWidget(_buildApp());
-      await _pumpFrames(tester);
+      await tester.pumpWidget(buildTestApp());
+      await pumpFrames(tester);
 
       await tester.tap(find.text('Tasks').first);
-      await _pumpFrames(tester);
+      await pumpFrames(tester);
 
       expect(find.text('今日のタスク'), findsOneWidget);
     });
 
     testWidgets('switches to Penguin tab when tapped', (tester) async {
-      await tester.pumpWidget(_buildApp());
-      await _pumpFrames(tester);
+      await tester.pumpWidget(buildTestApp());
+      await pumpFrames(tester);
 
       await tester.tap(find.text('Penguin').first);
-      await _pumpFrames(tester);
+      await pumpFrames(tester);
 
       expect(find.textContaining('ペンギンルーム'), findsOneWidget);
     });
@@ -98,22 +98,22 @@ void main() {
 
   group('Home Tab', () {
     testWidgets('shows empty state when no tasks', (tester) async {
-      await tester.pumpWidget(_buildApp());
-      await _pumpFrames(tester);
+      await tester.pumpWidget(buildTestApp());
+      await pumpFrames(tester);
 
       expect(find.text('今日のタスク'), findsAtLeastNWidgets(1));
     });
 
     testWidgets('shows create task callout', (tester) async {
-      await tester.pumpWidget(_buildApp());
-      await _pumpFrames(tester, 12);
+      await tester.pumpWidget(buildTestApp());
+      await pumpFrames(tester, 12);
 
       expect(find.text('今日のタスクを作成しよう'), findsOneWidget);
     });
 
     testWidgets('shows penguin animation', (tester) async {
-      await tester.pumpWidget(_buildApp());
-      await _pumpFrames(tester);
+      await tester.pumpWidget(buildTestApp());
+      await pumpFrames(tester);
 
       // AnimatedPenguinのImageが存在するかチェック
       expect(find.byType(Image), findsWidgets);
@@ -122,35 +122,35 @@ void main() {
 
   group('Tasks Tab', () {
     testWidgets('shows add task button', (tester) async {
-      await tester.pumpWidget(_buildApp());
-      await _pumpFrames(tester);
+      await tester.pumpWidget(buildTestApp());
+      await pumpFrames(tester);
 
       await tester.tap(find.text('Tasks').first);
-      await _pumpFrames(tester);
+      await pumpFrames(tester);
 
       expect(find.byTooltip('Add Task'), findsOneWidget);
     });
 
     testWidgets('opens task form when add button is tapped', (tester) async {
-      await tester.pumpWidget(_buildApp());
-      await _pumpFrames(tester);
+      await tester.pumpWidget(buildTestApp());
+      await pumpFrames(tester);
 
       await tester.tap(find.text('Tasks').first);
-      await _pumpFrames(tester);
+      await pumpFrames(tester);
 
       await tester.tap(find.byTooltip('Add Task'));
-      await _pumpFrames(tester, 12);
+      await pumpFrames(tester, 12);
 
       expect(find.text('タスクを作成'), findsAtLeastNWidgets(1));
       expect(find.text('タスク名'), findsOneWidget);
     });
 
     testWidgets('shows empty state message when no tasks', (tester) async {
-      await tester.pumpWidget(_buildApp());
-      await _pumpFrames(tester);
+      await tester.pumpWidget(buildTestApp());
+      await pumpFrames(tester);
 
       await tester.tap(find.text('Tasks').first);
-      await _pumpFrames(tester);
+      await pumpFrames(tester);
 
       expect(
         find.byWidgetPredicate(
@@ -162,11 +162,11 @@ void main() {
     });
 
     testWidgets('shows completed tasks section', (tester) async {
-      await tester.pumpWidget(_buildApp());
-      await _pumpFrames(tester);
+      await tester.pumpWidget(buildTestApp());
+      await pumpFrames(tester);
 
       await tester.tap(find.text('Tasks').first);
-      await _pumpFrames(tester);
+      await pumpFrames(tester);
 
       expect(find.text('完了済み'), findsOneWidget);
     });
@@ -174,34 +174,34 @@ void main() {
 
   group('Task Form', () {
     testWidgets('requires task name', (tester) async {
-      await tester.pumpWidget(_buildApp());
-      await _pumpFrames(tester);
+      await tester.pumpWidget(buildTestApp());
+      await pumpFrames(tester);
 
       await tester.tap(find.text('Tasks').first);
-      await _pumpFrames(tester);
+      await pumpFrames(tester);
 
       await tester.tap(find.byTooltip('Add Task'));
-      await _pumpFrames(tester, 12);
+      await pumpFrames(tester, 12);
 
       expect(find.text('タスクを作成'), findsWidgets);
 
       // Try to save without entering name
       await tester.tap(find.text('タスクを作成').last);
-      await _pumpFrames(tester);
+      await pumpFrames(tester);
 
       final tasksBox = Hive.box<HabitTask>('tasks');
       expect(tasksBox.isEmpty, isTrue);
     });
 
     testWidgets('shows difficulty selector', (tester) async {
-      await tester.pumpWidget(_buildApp());
-      await _pumpFrames(tester);
+      await tester.pumpWidget(buildTestApp());
+      await pumpFrames(tester);
 
       await tester.tap(find.text('Tasks').first);
-      await _pumpFrames(tester);
+      await pumpFrames(tester);
 
       await tester.tap(find.byTooltip('Add Task'));
-      await _pumpFrames(tester, 12);
+      await pumpFrames(tester, 12);
 
       expect(find.text('Easy'), findsOneWidget);
       expect(find.text('Normal'), findsOneWidget);
@@ -209,14 +209,14 @@ void main() {
     });
 
     testWidgets('shows icon selector', (tester) async {
-      await tester.pumpWidget(_buildApp());
-      await _pumpFrames(tester);
+      await tester.pumpWidget(buildTestApp());
+      await pumpFrames(tester);
 
       await tester.tap(find.text('Tasks').first);
-      await _pumpFrames(tester);
+      await pumpFrames(tester);
 
       await tester.tap(find.byTooltip('Add Task'));
-      await _pumpFrames(tester, 12);
+      await pumpFrames(tester, 12);
 
       expect(find.text('アイコン'), findsOneWidget);
       // Multiple icon options should be visible
@@ -224,46 +224,46 @@ void main() {
     });
 
     testWidgets('shows repeating task toggle', (tester) async {
-      await tester.pumpWidget(_buildApp());
-      await _pumpFrames(tester);
+      await tester.pumpWidget(buildTestApp());
+      await pumpFrames(tester);
 
       await tester.tap(find.text('Tasks').first);
-      await _pumpFrames(tester);
+      await pumpFrames(tester);
 
       await tester.tap(find.byTooltip('Add Task'));
-      await _pumpFrames(tester, 12);
+      await pumpFrames(tester, 12);
 
       expect(find.text('繰り返しタスク'), findsOneWidget);
       expect(find.byType(Switch), findsWidgets);
     });
 
     testWidgets('shows reminder toggle', (tester) async {
-      await tester.pumpWidget(_buildApp());
-      await _pumpFrames(tester);
+      await tester.pumpWidget(buildTestApp());
+      await pumpFrames(tester);
 
       await tester.tap(find.text('Tasks').first);
-      await _pumpFrames(tester);
+      await pumpFrames(tester);
 
       await tester.tap(find.byTooltip('Add Task'));
-      await _pumpFrames(tester);
+      await pumpFrames(tester);
 
       expect(find.text('通知を受け取る'), findsOneWidget);
     });
 
     testWidgets('can close form with back button', (tester) async {
-      await tester.pumpWidget(_buildApp());
-      await _pumpFrames(tester);
+      await tester.pumpWidget(buildTestApp());
+      await pumpFrames(tester);
 
       await tester.tap(find.text('Tasks').first);
-      await _pumpFrames(tester);
+      await pumpFrames(tester);
 
       await tester.tap(find.byTooltip('Add Task'));
-      await _pumpFrames(tester);
+      await pumpFrames(tester);
 
       expect(find.text('タスクを作成'), findsWidgets);
 
       await tester.pageBack();
-      await _pumpFrames(tester, 12);
+      await pumpFrames(tester, 12);
 
       expect(find.byType(TaskFormPage), findsNothing);
       expect(find.text('今日のタスク'), findsAtLeastNWidgets(1));
@@ -272,11 +272,11 @@ void main() {
 
   group('Penguin Tab', () {
     testWidgets('shows under construction message', (tester) async {
-      await tester.pumpWidget(_buildApp());
-      await _pumpFrames(tester);
+      await tester.pumpWidget(buildTestApp());
+      await pumpFrames(tester);
 
       await tester.tap(find.text('Penguin').first);
-      await _pumpFrames(tester);
+      await pumpFrames(tester);
 
       expect(find.textContaining('準備中'), findsOneWidget);
     });
