@@ -57,6 +57,20 @@ void main() {
     }
   }
 
+  Finder taskFormSubmitButton() {
+    // TaskFormPage内のFilledButtonを探す
+    return find
+        .descendant(
+          of: find.byType(TaskFormPage),
+          matching: find.byWidgetPredicate(
+            (widget) =>
+                widget is FilledButton ||
+                (widget.runtimeType.toString().contains('FilledButton')),
+          ),
+        )
+        .last;
+  }
+
   group('MainScreen Navigation', () {
     testWidgets('shows bottom navigation with three tabs', (tester) async {
       await tester.pumpWidget(buildTestApp());
@@ -186,7 +200,7 @@ void main() {
       expect(find.text('タスクを作成'), findsWidgets);
 
       // Try to save without entering name
-      await tester.tap(find.text('タスクを作成').last);
+      await tester.tap(taskFormSubmitButton());
       await pumpFrames(tester);
 
       final tasksBox = Hive.box<HabitTask>('tasks');
