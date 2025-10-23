@@ -14,6 +14,7 @@ import 'package:hive/hive.dart';
 
 import 'package:habit_penguin/main.dart';
 import 'package:habit_penguin/models/habit_task.dart';
+import 'package:habit_penguin/models/task_completion_history.dart';
 import 'package:habit_penguin/providers/providers.dart';
 import 'package:habit_penguin/services/notification_service.dart';
 
@@ -23,28 +24,29 @@ void main() {
   late Directory tempDir;
   late NotificationService notificationService;
 
-  setUpAll(() async {
+  setUp(() async {
     tempDir = await Directory.systemTemp.createTemp('habit_penguin_test');
     Hive.init(tempDir.path);
+
     if (!Hive.isAdapterRegistered(0)) {
       Hive.registerAdapter(HabitTaskAdapter());
     }
-    await Hive.openBox<HabitTask>('tasks');
-    await Hive.openBox('appState');
-  });
+    if (!Hive.isAdapterRegistered(1)) {
+      Hive.registerAdapter(TaskCompletionHistoryAdapter());
+    }
 
-  setUp(() async {
+    await Hive.openBox<HabitTask>('tasks');
+    await Hive.openBox<TaskCompletionHistory>('completion_history');
+    await Hive.openBox('appState');
     notificationService = NotificationService.test();
     await Hive.box('appState').put('hasCompletedOnboarding', true);
   });
 
-  tearDown(() async {
+  tearDown() async {
     await Hive.box<HabitTask>('tasks').clear();
+    await Hive.box<TaskCompletionHistory>('completion_history').clear();
     await Hive.box('appState').clear();
-  });
-
-  tearDownAll(() async {
-    await Hive.deleteFromDisk();
+    await Hive.close();
     await tempDir.delete(recursive: true);
   });
 
