@@ -42,7 +42,7 @@ void main() {
     await Hive.box('appState').put('hasCompletedOnboarding', true);
   });
 
-  tearDown() async {
+  tearDown(() async {
     await Hive.box<HabitTask>('tasks').clear();
     await Hive.box<TaskCompletionHistory>('completion_history').clear();
     await Hive.box('appState').clear();
