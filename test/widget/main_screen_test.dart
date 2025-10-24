@@ -59,16 +59,14 @@ void main() {
 
   Finder taskFormSubmitButton() {
     // TaskFormPage内のFilledButtonを探す
-    return find
-        .descendant(
-          of: find.byType(TaskFormPage),
-          matching: find.byWidgetPredicate(
-            (widget) =>
-                widget is FilledButton ||
-                (widget.runtimeType.toString().contains('FilledButton')),
-          ),
-        )
-        .last;
+    return find.descendant(
+      of: find.byType(TaskFormPage),
+      matching: find.byWidgetPredicate(
+        (widget) =>
+            widget is FilledButton ||
+            (widget.runtimeType.toString().contains('FilledButton')),
+      ),
+    ).last;
   }
 
   group('MainScreen Navigation', () {
