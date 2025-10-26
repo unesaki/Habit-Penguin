@@ -80,6 +80,9 @@ void main() {
   }
 
   Future<void> waitForTaskFormToClose(WidgetTester tester) async {
+    // タップイベントを処理するため、即座にpump
+    await tester.pump();
+
     // フォームが閉じるまで待機（最大5秒）
     for (var i = 0; i < 50; i++) {
       await tester.pump(const Duration(milliseconds: 100));
