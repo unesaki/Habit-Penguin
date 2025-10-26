@@ -898,6 +898,262 @@ void main() {
     });
   });
 
+  group('Completion History Deletion', () {
+    test('deletes completion history when task is deleted', () async {
+      final tasksBox = Hive.box<HabitTask>('tasks');
+      final historyBox = Hive.box<TaskCompletionHistory>('completion_history');
+
+      // Create a task
+      await tasksBox.add(HabitTask(
+        name: 'Task to Delete',
+        iconCodePoint: Icons.check.codePoint,
+        difficulty: TaskDifficulty.normal,
+        scheduledDate: DateTime.now(),
+      ));
+
+      final taskKey = 0;
+
+      // Add completion history for this task
+      await historyBox.add(TaskCompletionHistory(
+        taskKey: taskKey,
+        completedAt: DateTime.now(),
+        earnedXp: 30,
+      ));
+
+      await historyBox.add(TaskCompletionHistory(
+        taskKey: taskKey,
+        completedAt: DateTime.now().subtract(const Duration(days: 1)),
+        earnedXp: 30,
+      ));
+
+      // Verify history exists
+      expect(historyBox.length, 2);
+
+      // Delete the task and its history
+      final repository = CompletionHistoryRepository(historyBox);
+      await repository.deleteAllForTask(taskKey);
+      await tasksBox.deleteAt(taskKey);
+
+      // Verify history is deleted
+      expect(historyBox.length, 0);
+      expect(tasksBox.length, 0);
+    });
+
+    test('deletes only specific task history, not all', () async {
+      final tasksBox = Hive.box<HabitTask>('tasks');
+      final historyBox = Hive.box<TaskCompletionHistory>('completion_history');
+
+      // Create two tasks
+      await tasksBox.add(HabitTask(
+        name: 'Task 1',
+        iconCodePoint: Icons.check.codePoint,
+        difficulty: TaskDifficulty.normal,
+        scheduledDate: DateTime.now(),
+      ));
+
+      await tasksBox.add(HabitTask(
+        name: 'Task 2',
+        iconCodePoint: Icons.check.codePoint,
+        difficulty: TaskDifficulty.normal,
+        scheduledDate: DateTime.now(),
+      ));
+
+      // Add history for both tasks
+      await historyBox.add(TaskCompletionHistory(
+        taskKey: 0,
+        completedAt: DateTime.now(),
+        earnedXp: 30,
+      ));
+
+      await historyBox.add(TaskCompletionHistory(
+        taskKey: 1,
+        completedAt: DateTime.now(),
+        earnedXp: 30,
+      ));
+
+      expect(historyBox.length, 2);
+
+      // Delete only task 0's history
+      final repository = CompletionHistoryRepository(historyBox);
+      await repository.deleteAllForTask(0);
+
+      // Verify only task 0's history is deleted
+      expect(historyBox.length, 1);
+      expect(historyBox.getAt(0)?.taskKey, 1);
+    });
+  });
+
+  group('Memo Functionality', () {
+    test('saves completion memo with history', () async {
+      final historyBox = Hive.box<TaskCompletionHistory>('completion_history');
+
+      // Add completion with memo
+      await historyBox.add(TaskCompletionHistory(
+        taskKey: 0,
+        completedAt: DateTime.now(),
+        earnedXp: 30,
+        notes: 'Great workout today!',
+      ));
+
+      // Verify memo is saved
+      final history = historyBox.getAt(0);
+      expect(history?.notes, 'Great workout today!');
+    });
+
+    test('retrieves completion history with memos', () async {
+      final tasksBox = Hive.box<HabitTask>('tasks');
+      final historyBox = Hive.box<TaskCompletionHistory>('completion_history');
+
+      await tasksBox.add(HabitTask(
+        name: 'Memo Task',
+        iconCodePoint: Icons.check.codePoint,
+        difficulty: TaskDifficulty.normal,
+        scheduledDate: DateTime.now(),
+      ));
+
+      final taskKey = 0;
+
+      // Add multiple completions with different memos
+      await historyBox.add(TaskCompletionHistory(
+        taskKey: taskKey,
+        completedAt: DateTime.now(),
+        earnedXp: 30,
+        notes: 'First completion',
+      ));
+
+      await historyBox.add(TaskCompletionHistory(
+        taskKey: taskKey,
+        completedAt: DateTime.now().subtract(const Duration(days: 1)),
+        earnedXp: 30,
+        notes: 'Second completion',
+      ));
+
+      // Retrieve history for task
+      final repository = CompletionHistoryRepository(historyBox);
+      final history = repository.getHistoryForTask(taskKey);
+
+      expect(history.length, 2);
+      expect(history.any((h) => h.notes == 'First completion'), true);
+      expect(history.any((h) => h.notes == 'Second completion'), true);
+    });
+  });
+
+  group('Reminder Functionality', () {
+    test('task stores reminder settings', () async {
+      final tasksBox = Hive.box<HabitTask>('tasks');
+
+      await tasksBox.add(HabitTask(
+        name: 'Reminder Task',
+        iconCodePoint: Icons.check.codePoint,
+        difficulty: TaskDifficulty.normal,
+        scheduledDate: DateTime.now(),
+        reminderEnabled: true,
+        reminderTime: const TimeOfDay(hour: 9, minute: 0),
+      ));
+
+      final task = tasksBox.getAt(0);
+      expect(task?.reminderEnabled, true);
+      expect(task?.reminderTime?.hour, 9);
+      expect(task?.reminderTime?.minute, 0);
+    });
+
+    test('disables reminder when flag is false', () async {
+      final tasksBox = Hive.box<HabitTask>('tasks');
+
+      await tasksBox.add(HabitTask(
+        name: 'No Reminder Task',
+        iconCodePoint: Icons.check.codePoint,
+        difficulty: TaskDifficulty.normal,
+        scheduledDate: DateTime.now(),
+        reminderEnabled: false,
+      ));
+
+      final task = tasksBox.getAt(0);
+      expect(task?.reminderEnabled, false);
+      expect(task?.reminderTime, null);
+    });
+  });
+
+  group('Performance Tests', () {
+    test('handles 100+ tasks efficiently', () async {
+      final tasksBox = Hive.box<HabitTask>('tasks');
+
+      // Create 100 tasks
+      for (int i = 0; i < 100; i++) {
+        await tasksBox.add(HabitTask(
+          name: 'Task $i',
+          iconCodePoint: Icons.check.codePoint,
+          difficulty: TaskDifficulty.normal,
+          scheduledDate: DateTime.now(),
+        ));
+      }
+
+      // Verify all tasks are created
+      expect(tasksBox.length, 100);
+
+      // Retrieve all tasks (should be fast)
+      final stopwatch = Stopwatch()..start();
+      final tasks = tasksBox.values.toList();
+      stopwatch.stop();
+
+      expect(tasks.length, 100);
+      // Should complete in less than 100ms
+      expect(stopwatch.elapsedMilliseconds < 100, true);
+    });
+
+    test('handles 1000+ completion history records efficiently', () async {
+      final historyBox = Hive.box<TaskCompletionHistory>('completion_history');
+
+      // Create 1000 history records
+      for (int i = 0; i < 1000; i++) {
+        await historyBox.add(TaskCompletionHistory(
+          taskKey: i % 10, // 10 tasks with 100 completions each
+          completedAt:
+              DateTime.now().subtract(Duration(days: i ~/ 10, hours: i % 10)),
+          earnedXp: 30,
+        ));
+      }
+
+      expect(historyBox.length, 1000);
+
+      // Test retrieval performance
+      final repository = CompletionHistoryRepository(historyBox);
+      final stopwatch = Stopwatch()..start();
+      final taskHistory = repository.getHistoryForTask(0);
+      stopwatch.stop();
+
+      expect(taskHistory.length, 100);
+      // Should complete in less than 100ms
+      expect(stopwatch.elapsedMilliseconds < 100, true);
+    });
+
+    test('calculates streak efficiently with large history', () async {
+      final historyBox = Hive.box<TaskCompletionHistory>('completion_history');
+
+      final taskKey = 0;
+      final today = DateTime.now();
+
+      // Create 365 days of consecutive completions
+      for (int i = 0; i < 365; i++) {
+        await historyBox.add(TaskCompletionHistory(
+          taskKey: taskKey,
+          completedAt: today.subtract(Duration(days: i)),
+          earnedXp: 30,
+        ));
+      }
+
+      // Calculate streak (should be fast even with 365 records)
+      final repository = CompletionHistoryRepository(historyBox);
+      final stopwatch = Stopwatch()..start();
+      final streak = repository.calculateStreak(taskKey);
+      stopwatch.stop();
+
+      expect(streak, 365);
+      // Should complete in less than 100ms
+      expect(stopwatch.elapsedMilliseconds < 100, true);
+    });
+  });
+
   group('Data Persistence', () {
     testWidgets('tasks persist across app restarts', (tester) async {
       // Create task
