@@ -81,44 +81,48 @@ void main() {
   }
 
   Future<void> waitForTaskFormToClose(WidgetTester tester) async {
-    // タップイベントを処理するため、即座にpump
-    await tester.pump();
-
-    // フォームが閉じるまで待機（最大5秒）
-    for (var i = 0; i < 50; i++) {
-      await tester.pump(const Duration(milliseconds: 100));
-      if (find.byType(TaskFormPage).evaluate().isEmpty) {
-        // 閉じアニメーション完了を待機
-        await pumpFrames(tester, 3);
-        return;
-      }
+    // タップイベントとその後の非同期処理を完全に処理
+    try {
+      await tester.pumpAndSettle(const Duration(milliseconds: 100));
+    } catch (e) {
+      // タイムアウトの場合は警告を出す
+      print('Warning: TaskFormPage did not close within timeout: $e');
     }
 
-    // タイムアウトした場合は警告を出す
-    print('Warning: TaskFormPage did not close within timeout');
+    // フォームが閉じていない場合は追加で待機
+    if (find.byType(TaskFormPage).evaluate().isNotEmpty) {
+      for (var i = 0; i < 50; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+        if (find.byType(TaskFormPage).evaluate().isEmpty) {
+          await pumpFrames(tester, 3);
+          return;
+        }
+      }
+      print('Warning: TaskFormPage did not close within extended timeout');
+    }
   }
 
   group('Task Creation Workflow', () {
     testWidgets('creates a one-time task successfully', (tester) async {
       await tester.pumpWidget(buildTestApp());
-      await pumpFrames(tester, 10);
+      await tester.pumpAndSettle();
 
       // Navigate to Tasks tab
       await tester.tap(find.text('Tasks').first);
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       // Open task form
       await tester.tap(find.byTooltip('Add Task'));
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       // Enter task name
       await tester.enterText(
           find.byType(TextFormField).first, 'Morning Exercise');
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       // Select difficulty (Hard)
       await tester.tap(find.text('Hard'));
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       // Save task
       final submitButton = taskFormSubmitButton();
@@ -138,18 +142,18 @@ void main() {
 
     testWidgets('creates a repeating task successfully', (tester) async {
       await tester.pumpWidget(buildTestApp());
-      await pumpFrames(tester, 10);
+      await tester.pumpAndSettle();
 
       await tester.tap(find.text('Tasks').first);
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       await tester.tap(find.byTooltip('Add Task'));
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       // Enter task name
       await tester.enterText(
           find.byType(TextFormField).first, 'Daily Meditation');
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       // Enable repeating toggle
       final repeatingSwitch = find.ancestor(
@@ -160,7 +164,7 @@ void main() {
         of: repeatingSwitch,
         matching: find.byType(Switch),
       ));
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       // Save task
       final submitButton = taskFormSubmitButton();
@@ -181,21 +185,21 @@ void main() {
   group('Task Completion and XP Workflow', () {
     testWidgets('completes task and gains XP', (tester) async {
       await tester.pumpWidget(buildTestApp());
-      await pumpFrames(tester, 10);
+      await tester.pumpAndSettle();
 
       // Create a task first
       await tester.tap(find.text('Tasks').first);
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       await tester.tap(find.byTooltip('Add Task'));
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       await tester.enterText(find.byType(TextFormField).first, 'Test Task');
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       // Select Easy difficulty (5 XP)
       await tester.tap(find.text('Easy'));
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       await tester.tap(taskFormSubmitButton());
       await waitForTaskFormToClose(tester);
@@ -206,11 +210,11 @@ void main() {
 
       // Navigate to Home tab to complete the task
       await tester.tap(find.text('Home'));
-      await pumpFrames(tester, 12);
+      await tester.pumpAndSettle();
 
       // Complete the task via the action button
       await tester.tap(find.byTooltip('完了にする').first);
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       // Verify XP dialog appears
       expect(find.text('クエスト達成！'), findsOneWidget);
@@ -218,7 +222,7 @@ void main() {
 
       // Close dialog
       await tester.tap(find.text('OK'));
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       // Verify XP was added
       final finalXp = appStateBox.get('currentXp', defaultValue: 0) as int;
@@ -235,29 +239,29 @@ void main() {
 
     testWidgets('different difficulties award different XP', (tester) async {
       await tester.pumpWidget(buildTestApp());
-      await pumpFrames(tester, 10);
+      await tester.pumpAndSettle();
 
       await tester.tap(find.text('Tasks').first);
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       // Create Hard task (50 XP)
       await tester.tap(find.byTooltip('Add Task'));
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       await tester.enterText(find.byType(TextFormField).first, 'Hard Task');
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       await tester.tap(find.text('Hard'));
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       await tester.tap(taskFormSubmitButton());
       await waitForTaskFormToClose(tester);
 
       await tester.tap(find.text('Home'));
-      await pumpFrames(tester, 12);
+      await tester.pumpAndSettle();
 
       await tester.tap(find.byTooltip('完了にする').first);
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       expect(find.textContaining('50 XP'), findsOneWidget);
 
@@ -266,7 +270,7 @@ void main() {
       expect(xp, 50);
 
       await tester.tap(find.text('OK'));
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
     });
   });
 
@@ -274,17 +278,17 @@ void main() {
     testWidgets('repeating task can be completed multiple times',
         (tester) async {
       await tester.pumpWidget(buildTestApp());
-      await pumpFrames(tester, 10);
+      await tester.pumpAndSettle();
 
       await tester.tap(find.text('Tasks').first);
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       // Create repeating task
       await tester.tap(find.byTooltip('Add Task'));
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       await tester.enterText(find.byType(TextFormField).first, 'Daily Task');
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       final repeatingSwitch = find.ancestor(
         of: find.text('繰り返しタスク'),
@@ -294,19 +298,19 @@ void main() {
         of: repeatingSwitch,
         matching: find.byType(Switch),
       ));
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       await tester.tap(taskFormSubmitButton());
       await waitForTaskFormToClose(tester);
 
       await tester.tap(find.text('Home'));
-      await pumpFrames(tester, 12);
+      await tester.pumpAndSettle();
 
       await tester.tap(find.byTooltip('完了にする').first);
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       await tester.tap(find.text('OK'));
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       expect(find.text('Daily Task'), findsOneWidget);
 
@@ -321,31 +325,31 @@ void main() {
   group('Task Deletion Workflow', () {
     testWidgets('deletes task successfully', (tester) async {
       await tester.pumpWidget(buildTestApp());
-      await pumpFrames(tester, 10);
+      await tester.pumpAndSettle();
 
       await tester.tap(find.text('Tasks').first);
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       // Create task
       await tester.tap(find.byTooltip('Add Task'));
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       await tester.enterText(
           find.byType(TextFormField).first, 'Task to Delete');
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       await tester.tap(taskFormSubmitButton());
       await waitForTaskFormToClose(tester);
 
       final menuButton = find.byTooltip('メニュー').first;
       await tester.tap(menuButton);
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       await tester.tap(find.text('削除'));
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       await tester.tap(find.text('削除').last);
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       // Verify task is deleted
       expect(find.text('Task to Delete'), findsNothing);
@@ -443,17 +447,17 @@ void main() {
   group('Same Day Multiple Completions', () {
     testWidgets('repeating task can be completed multiple times on same day', (tester) async {
       await tester.pumpWidget(buildTestApp());
-      await pumpFrames(tester, 10);
+      await tester.pumpAndSettle();
 
       await tester.tap(find.text('Tasks').first);
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       // Create repeating task
       await tester.tap(find.byTooltip('Add Task'));
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       await tester.enterText(find.byType(TextFormField).first, 'Multiple Completion Task');
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       final repeatingSwitch = find.ancestor(
         of: find.text('繰り返しタスク'),
@@ -463,7 +467,7 @@ void main() {
         of: repeatingSwitch,
         matching: find.byType(Switch),
       ));
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       await tester.tap(taskFormSubmitButton());
       await waitForTaskFormToClose(tester);
@@ -474,20 +478,20 @@ void main() {
 
       // Complete first time
       await tester.tap(find.text('Home'));
-      await pumpFrames(tester, 12);
+      await tester.pumpAndSettle();
 
       await tester.tap(find.byTooltip('完了にする').first);
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       await tester.tap(find.text('OK'));
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       // Complete second time on same day
       await tester.tap(find.byTooltip('完了にする').first);
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       await tester.tap(find.text('OK'));
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       // Verify XP was added twice
       final finalXp = appStateBox.get('currentXp', defaultValue: 0) as int;
@@ -502,40 +506,40 @@ void main() {
   group('Today Completion Status', () {
     testWidgets('shows correct completion status for today', (tester) async {
       await tester.pumpWidget(buildTestApp());
-      await pumpFrames(tester, 10);
+      await tester.pumpAndSettle();
 
       await tester.tap(find.text('Tasks').first);
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       // Create task
       await tester.tap(find.byTooltip('Add Task'));
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       await tester.enterText(find.byType(TextFormField).first, 'Today Status Task');
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       await tester.tap(taskFormSubmitButton());
       await waitForTaskFormToClose(tester);
 
       // Complete the task
       await tester.tap(find.text('Home'));
-      await pumpFrames(tester, 12);
+      await tester.pumpAndSettle();
 
       await tester.tap(find.byTooltip('完了にする').first);
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       await tester.tap(find.text('OK'));
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       // Verify task shows as completed
       expect(find.text('完了済み'), findsOneWidget);
 
       // Restart app
       await tester.pumpWidget(buildTestApp());
-      await pumpFrames(tester, 10);
+      await tester.pumpAndSettle();
 
       await tester.tap(find.text('Home'));
-      await pumpFrames(tester, 12);
+      await tester.pumpAndSettle();
 
       // Verify completion status is still shown
       expect(find.text('完了済み'), findsOneWidget);
@@ -549,30 +553,30 @@ void main() {
 
     testWidgets('prevents completing same non-repeating task twice today', (tester) async {
       await tester.pumpWidget(buildTestApp());
-      await pumpFrames(tester, 10);
+      await tester.pumpAndSettle();
 
       await tester.tap(find.text('Tasks').first);
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       // Create non-repeating task
       await tester.tap(find.byTooltip('Add Task'));
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       await tester.enterText(find.byType(TextFormField).first, 'Once Only Task');
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       await tester.tap(taskFormSubmitButton());
       await waitForTaskFormToClose(tester);
 
       // Complete the task
       await tester.tap(find.text('Home'));
-      await pumpFrames(tester, 12);
+      await tester.pumpAndSettle();
 
       await tester.tap(find.byTooltip('完了にする').first);
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       await tester.tap(find.text('OK'));
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       // Try to complete again - task should be in completed section
       // and not appear in active tasks
@@ -587,33 +591,33 @@ void main() {
   group('Normal Difficulty XP', () {
     testWidgets('normal difficulty awards 30 XP', (tester) async {
       await tester.pumpWidget(buildTestApp());
-      await pumpFrames(tester, 10);
+      await tester.pumpAndSettle();
 
       await tester.tap(find.text('Tasks').first);
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       // Create Normal task (default difficulty)
       await tester.tap(find.byTooltip('Add Task'));
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       await tester.enterText(find.byType(TextFormField).first, 'Normal Task');
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       // Don't select difficulty - Normal is default
       await tester.tap(taskFormSubmitButton());
       await waitForTaskFormToClose(tester);
 
       await tester.tap(find.text('Home'));
-      await pumpFrames(tester, 12);
+      await tester.pumpAndSettle();
 
       await tester.tap(find.byTooltip('完了にする').first);
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       // Verify 30 XP is shown
       expect(find.textContaining('30 XP'), findsOneWidget);
 
       await tester.tap(find.text('OK'));
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       // Verify XP was added
       final appStateBox = Hive.box('appState');
@@ -625,22 +629,22 @@ void main() {
   group('Level Up System', () {
     testWidgets('levels up when reaching 100 XP', (tester) async {
       await tester.pumpWidget(buildTestApp());
-      await pumpFrames(tester, 10);
+      await tester.pumpAndSettle();
 
       await tester.tap(find.text('Tasks').first);
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       // Create two Hard tasks (50 XP each = 100 XP total)
       for (int i = 0; i < 2; i++) {
         await tester.tap(find.byTooltip('Add Task'));
-        await pumpFrames(tester);
+        await tester.pumpAndSettle();
 
         await tester.enterText(
             find.byType(TextFormField).first, 'Hard Task ${i + 1}');
-        await pumpFrames(tester);
+        await tester.pumpAndSettle();
 
         await tester.tap(find.text('Hard'));
-        await pumpFrames(tester);
+        await tester.pumpAndSettle();
 
         await tester.tap(taskFormSubmitButton());
         await waitForTaskFormToClose(tester);
@@ -648,13 +652,13 @@ void main() {
 
       // Complete first task (50 XP)
       await tester.tap(find.text('Home'));
-      await pumpFrames(tester, 12);
+      await tester.pumpAndSettle();
 
       await tester.tap(find.byTooltip('完了にする').first);
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       await tester.tap(find.text('OK'));
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       // Verify level is still 1
       final appStateBox = Hive.box('appState');
@@ -667,10 +671,10 @@ void main() {
 
       // Complete second task (100 XP total)
       await tester.tap(find.byTooltip('完了にする').first);
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       await tester.tap(find.text('OK'));
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       // Verify XP is 100
       xp = appStateBox.get('currentXp', defaultValue: 0) as int;
@@ -700,21 +704,21 @@ void main() {
   group('Task Edit Functionality', () {
     testWidgets('edits task successfully', (tester) async {
       await tester.pumpWidget(buildTestApp());
-      await pumpFrames(tester, 10);
+      await tester.pumpAndSettle();
 
       await tester.tap(find.text('Tasks').first);
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       // Create a task
       await tester.tap(find.byTooltip('Add Task'));
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       await tester.enterText(
           find.byType(TextFormField).first, 'Original Task');
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       await tester.tap(find.text('Easy'));
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       await tester.tap(taskFormSubmitButton());
       await waitForTaskFormToClose(tester);
@@ -725,24 +729,23 @@ void main() {
       // Open edit menu
       final menuButton = find.byTooltip('メニュー').first;
       await tester.tap(menuButton);
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       // Tap edit
       await tester.tap(find.text('編集'));
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       // Wait for form to open
-      await pumpFrames(tester, 5);
       expect(find.byType(TaskFormPage), findsOneWidget);
 
       // Edit task name
       final nameField = find.byType(TextFormField).first;
       await tester.enterText(nameField, 'Updated Task');
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       // Change difficulty to Hard
       await tester.tap(find.text('Hard'));
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       // Save changes
       await tester.tap(taskFormSubmitButton());
@@ -761,17 +764,17 @@ void main() {
   group('Error Handling', () {
     testWidgets('shows error when task name is empty', (tester) async {
       await tester.pumpWidget(buildTestApp());
-      await pumpFrames(tester, 10);
+      await tester.pumpAndSettle();
 
       await tester.tap(find.text('Tasks').first);
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       await tester.tap(find.byTooltip('Add Task'));
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       // Don't enter task name, just try to submit
       await tester.tap(taskFormSubmitButton());
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       // Form should still be open (validation failed)
       expect(find.byType(TaskFormPage), findsOneWidget);
@@ -784,17 +787,17 @@ void main() {
     testWidgets('shows error when repeat end date is before start date',
         (tester) async {
       await tester.pumpWidget(buildTestApp());
-      await pumpFrames(tester, 10);
+      await tester.pumpAndSettle();
 
       await tester.tap(find.text('Tasks').first);
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       await tester.tap(find.byTooltip('Add Task'));
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       await tester.enterText(
           find.byType(TextFormField).first, 'Invalid Repeat Task');
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       // Enable repeating
       final repeatingSwitch = find.ancestor(
@@ -805,13 +808,13 @@ void main() {
         of: repeatingSwitch,
         matching: find.byType(Switch),
       ));
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       // Try to submit (this should be caught by validation)
       // Note: In a real scenario, you would set end date before start date
       // For now, we verify the task is created with valid default dates
       await tester.tap(taskFormSubmitButton());
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       // If validation is working, form might still be open or task created with valid dates
       // This is a placeholder - actual implementation may vary
@@ -1158,27 +1161,27 @@ void main() {
     testWidgets('tasks persist across app restarts', (tester) async {
       // Create task
       await tester.pumpWidget(buildTestApp());
-      await pumpFrames(tester, 10);
+      await tester.pumpAndSettle();
 
       await tester.tap(find.text('Tasks').first);
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       await tester.tap(find.byTooltip('Add Task'));
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       await tester.enterText(
           find.byType(TextFormField).first, 'Persistent Task');
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       await tester.tap(taskFormSubmitButton());
       await waitForTaskFormToClose(tester);
 
       // Simulate app restart by creating new widget
       await tester.pumpWidget(buildTestApp());
-      await pumpFrames(tester, 10);
+      await tester.pumpAndSettle();
 
       await tester.tap(find.text('Tasks').first);
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       // Verify task still exists
       expect(find.text('Persistent Task'), findsOneWidget);
@@ -1187,31 +1190,31 @@ void main() {
     testWidgets('XP persists across app restarts', (tester) async {
       // Earn some XP
       await tester.pumpWidget(buildTestApp());
-      await pumpFrames(tester, 10);
+      await tester.pumpAndSettle();
 
       await tester.tap(find.text('Tasks').first);
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       await tester.tap(find.byTooltip('Add Task'));
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       await tester.enterText(find.byType(TextFormField).first, 'XP Task');
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       await tester.tap(find.text('Hard'));
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       await tester.tap(taskFormSubmitButton());
       await waitForTaskFormToClose(tester);
 
       await tester.tap(find.text('Home'));
-      await pumpFrames(tester, 12);
+      await tester.pumpAndSettle();
 
       await tester.tap(find.byTooltip('完了にする').first);
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       await tester.tap(find.text('OK'));
-      await pumpFrames(tester);
+      await tester.pumpAndSettle();
 
       // Get XP amount
       final appStateBox = Hive.box('appState');
@@ -1220,7 +1223,7 @@ void main() {
 
       // Restart app
       await tester.pumpWidget(buildTestApp());
-      await pumpFrames(tester, 10);
+      await tester.pumpAndSettle();
 
       // Verify XP is still there
       final persistedXp = appStateBox.get('currentXp', defaultValue: 0) as int;
