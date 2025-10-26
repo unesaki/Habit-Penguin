@@ -8,6 +8,7 @@ import 'package:habit_penguin/main.dart';
 import 'package:habit_penguin/models/habit_task.dart';
 import 'package:habit_penguin/models/task_completion_history.dart';
 import 'package:habit_penguin/providers/providers.dart';
+import 'package:habit_penguin/repositories/completion_history_repository.dart';
 import 'package:habit_penguin/services/notification_service.dart';
 
 /// インテグレーションテスト: タスクのライフサイクル全体をテスト
@@ -351,6 +352,273 @@ void main() {
 
       final tasksBox = Hive.box<HabitTask>('tasks');
       expect(tasksBox.length, 0);
+    });
+  });
+
+  group('Streak Calculation', () {
+    test('calculates streak for consecutive completions', () async {
+      // Create a task directly in Hive (no UI interaction needed)
+      final tasksBox = Hive.box<HabitTask>('tasks');
+      await tasksBox.add(HabitTask(
+        name: 'Streak Task',
+        iconCodePoint: Icons.check.codePoint,
+        difficulty: TaskDifficulty.normal,
+        scheduledDate: DateTime.now(),
+      ));
+
+      final taskKey = 0; // First task
+      final historyBox = Hive.box<TaskCompletionHistory>('completion_history');
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+
+      // Complete for today
+      await historyBox.add(TaskCompletionHistory(
+        taskKey: taskKey,
+        completedAt: today,
+        earnedXp: 30,
+      ));
+
+      // Complete for yesterday
+      await historyBox.add(TaskCompletionHistory(
+        taskKey: taskKey,
+        completedAt: today.subtract(const Duration(days: 1)),
+        earnedXp: 30,
+      ));
+
+      // Complete for 2 days ago
+      await historyBox.add(TaskCompletionHistory(
+        taskKey: taskKey,
+        completedAt: today.subtract(const Duration(days: 2)),
+        earnedXp: 30,
+      ));
+
+      // Verify streak calculation
+      final repository = CompletionHistoryRepository(historyBox);
+      expect(repository.calculateStreak(taskKey), 3);
+    });
+
+    test('streak resets when a day is missed', () async {
+      // Create a task directly in Hive
+      final tasksBox = Hive.box<HabitTask>('tasks');
+      await tasksBox.add(HabitTask(
+        name: 'Streak Reset Task',
+        iconCodePoint: Icons.check.codePoint,
+        difficulty: TaskDifficulty.normal,
+        scheduledDate: DateTime.now(),
+      ));
+
+      final taskKey = 0;
+      final historyBox = Hive.box<TaskCompletionHistory>('completion_history');
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+
+      // Complete today and yesterday (streak = 2)
+      await historyBox.add(TaskCompletionHistory(
+        taskKey: taskKey,
+        completedAt: today,
+        earnedXp: 30,
+      ));
+
+      await historyBox.add(TaskCompletionHistory(
+        taskKey: taskKey,
+        completedAt: today.subtract(const Duration(days: 1)),
+        earnedXp: 30,
+      ));
+
+      // Skip 2 days ago (day is missed)
+
+      // Complete 3 days ago
+      await historyBox.add(TaskCompletionHistory(
+        taskKey: taskKey,
+        completedAt: today.subtract(const Duration(days: 3)),
+        earnedXp: 30,
+      ));
+
+      // Verify streak is only 2 (today and yesterday)
+      final repository = CompletionHistoryRepository(historyBox);
+      expect(repository.calculateStreak(taskKey), 2);
+    });
+  });
+
+  group('Same Day Multiple Completions', () {
+    testWidgets('repeating task can be completed multiple times on same day', (tester) async {
+      await tester.pumpWidget(buildTestApp());
+      await pumpFrames(tester, 10);
+
+      await tester.tap(find.text('Tasks').first);
+      await pumpFrames(tester);
+
+      // Create repeating task
+      await tester.tap(find.byTooltip('Add Task'));
+      await pumpFrames(tester);
+
+      await tester.enterText(find.byType(TextFormField).first, 'Multiple Completion Task');
+      await pumpFrames(tester);
+
+      final repeatingSwitch = find.ancestor(
+        of: find.text('繰り返しタスク'),
+        matching: find.byType(Row),
+      );
+      await tester.tap(find.descendant(
+        of: repeatingSwitch,
+        matching: find.byType(Switch),
+      ));
+      await pumpFrames(tester);
+
+      await tester.tap(taskFormSubmitButton());
+      await waitForTaskFormToClose(tester);
+
+      // Get initial XP
+      final appStateBox = Hive.box('appState');
+      final initialXp = appStateBox.get('currentXp', defaultValue: 0) as int;
+
+      // Complete first time
+      await tester.tap(find.text('Home'));
+      await pumpFrames(tester, 12);
+
+      await tester.tap(find.byTooltip('完了にする').first);
+      await pumpFrames(tester);
+
+      await tester.tap(find.text('OK'));
+      await pumpFrames(tester);
+
+      // Complete second time on same day
+      await tester.tap(find.byTooltip('完了にする').first);
+      await pumpFrames(tester);
+
+      await tester.tap(find.text('OK'));
+      await pumpFrames(tester);
+
+      // Verify XP was added twice
+      final finalXp = appStateBox.get('currentXp', defaultValue: 0) as int;
+      expect(finalXp, initialXp + 60); // Normal difficulty = 30 XP × 2
+
+      // Verify completion history has 2 records
+      final historyBox = Hive.box<TaskCompletionHistory>('completion_history');
+      expect(historyBox.length, 2);
+    });
+  });
+
+  group('Today Completion Status', () {
+    testWidgets('shows correct completion status for today', (tester) async {
+      await tester.pumpWidget(buildTestApp());
+      await pumpFrames(tester, 10);
+
+      await tester.tap(find.text('Tasks').first);
+      await pumpFrames(tester);
+
+      // Create task
+      await tester.tap(find.byTooltip('Add Task'));
+      await pumpFrames(tester);
+
+      await tester.enterText(find.byType(TextFormField).first, 'Today Status Task');
+      await pumpFrames(tester);
+
+      await tester.tap(taskFormSubmitButton());
+      await waitForTaskFormToClose(tester);
+
+      // Complete the task
+      await tester.tap(find.text('Home'));
+      await pumpFrames(tester, 12);
+
+      await tester.tap(find.byTooltip('完了にする').first);
+      await pumpFrames(tester);
+
+      await tester.tap(find.text('OK'));
+      await pumpFrames(tester);
+
+      // Verify task shows as completed
+      expect(find.text('完了済み'), findsOneWidget);
+
+      // Restart app
+      await tester.pumpWidget(buildTestApp());
+      await pumpFrames(tester, 10);
+
+      await tester.tap(find.text('Home'));
+      await pumpFrames(tester, 12);
+
+      // Verify completion status is still shown
+      expect(find.text('完了済み'), findsOneWidget);
+
+      // Verify in history
+      final historyBox = Hive.box<TaskCompletionHistory>('completion_history');
+      final repository = CompletionHistoryRepository(historyBox);
+      final completedKeys = repository.getTodayCompletedTaskKeys();
+      expect(completedKeys.contains(0), true);
+    });
+
+    testWidgets('prevents completing same non-repeating task twice today', (tester) async {
+      await tester.pumpWidget(buildTestApp());
+      await pumpFrames(tester, 10);
+
+      await tester.tap(find.text('Tasks').first);
+      await pumpFrames(tester);
+
+      // Create non-repeating task
+      await tester.tap(find.byTooltip('Add Task'));
+      await pumpFrames(tester);
+
+      await tester.enterText(find.byType(TextFormField).first, 'Once Only Task');
+      await pumpFrames(tester);
+
+      await tester.tap(taskFormSubmitButton());
+      await waitForTaskFormToClose(tester);
+
+      // Complete the task
+      await tester.tap(find.text('Home'));
+      await pumpFrames(tester, 12);
+
+      await tester.tap(find.byTooltip('完了にする').first);
+      await pumpFrames(tester);
+
+      await tester.tap(find.text('OK'));
+      await pumpFrames(tester);
+
+      // Try to complete again - task should be in completed section
+      // and not appear in active tasks
+      expect(find.text('完了済み'), findsOneWidget);
+
+      // Verify there's only one completion button (none in active tasks)
+      final completionButtons = find.byTooltip('完了にする');
+      expect(completionButtons.evaluate().length, 0);
+    });
+  });
+
+  group('Normal Difficulty XP', () {
+    testWidgets('normal difficulty awards 30 XP', (tester) async {
+      await tester.pumpWidget(buildTestApp());
+      await pumpFrames(tester, 10);
+
+      await tester.tap(find.text('Tasks').first);
+      await pumpFrames(tester);
+
+      // Create Normal task (default difficulty)
+      await tester.tap(find.byTooltip('Add Task'));
+      await pumpFrames(tester);
+
+      await tester.enterText(find.byType(TextFormField).first, 'Normal Task');
+      await pumpFrames(tester);
+
+      // Don't select difficulty - Normal is default
+      await tester.tap(taskFormSubmitButton());
+      await waitForTaskFormToClose(tester);
+
+      await tester.tap(find.text('Home'));
+      await pumpFrames(tester, 12);
+
+      await tester.tap(find.byTooltip('完了にする').first);
+      await pumpFrames(tester);
+
+      // Verify 30 XP is shown
+      expect(find.textContaining('30 XP'), findsOneWidget);
+
+      await tester.tap(find.text('OK'));
+      await pumpFrames(tester);
+
+      // Verify XP was added
+      final appStateBox = Hive.box('appState');
+      final xp = appStateBox.get('currentXp', defaultValue: 0) as int;
+      expect(xp, 30);
     });
   });
 
